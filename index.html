@@ -6,11 +6,11 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Measure and compare network paths with an auditable test history.">
 <title>Linkbench · Network measurements</title>
-<link rel="stylesheet" href="./style.css?v=global-1">
-<script type="module" src="./app.js?v=global-4"></script>
+<link rel="stylesheet" href="./style.css?v=routes-1">
+<script type="module" src="./app.js?v=routes-1"></script>
 </head>
 <body>
-<header class="top"><div class="wrap masthead"><a class="brand" href="./" aria-label="Linkbench home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span> Linkbench</a><nav aria-label="Page"><a href="#test">Speed test</a><a href="#history">History</a><a href="#method">Method</a></nav></div></header>
+<header class="top"><div class="wrap masthead"><a class="brand" href="./" aria-label="Linkbench home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span> Linkbench</a><nav aria-label="Page"><a href="#test">Speed test</a><a href="#history">History</a><a href="#route-map">Routes</a><a href="#method">Method</a></nav></div></header>
 <main class="wrap">
 <section class="intro" id="test"><h1>Measure your<br>connection<span>.</span></h1><p>Test the path to a server. Compare the results across Wi-Fi, Ethernet, DSL, and cellular.</p></section>
 <div class="workbench">
@@ -60,6 +60,42 @@
 <div class="pilot" id="pilot" hidden><h3>Freiburg paired blocks</h3><div id="comparison"></div></div>
 </div>
 </section>
+<details class="panel route-panel" id="route-map">
+<summary><span>Explore network routes</span><small>Compare the shortest path with a plausible fiber corridor.</small></summary>
+<div class="route-content">
+<div class="route-controls">
+<label>Destination<select id="route-destination"><option value="fra04">Frankfurt</option><option value="lga05" selected>New York</option><option value="jnb01">Johannesburg</option><option value="sin01">Singapore</option><option value="syd03">Sydney</option></select></label>
+<p id="route-default"></p>
+</div>
+<svg id="route-map-image" viewBox="0 0 900 450" role="img" aria-label="World map of direct and candidate network routes">
+<image id="route-basemap" width="900" height="450"/>
+<path id="route-direct" class="route-direct"/>
+<path id="route-model" class="route-model"/>
+<g id="route-points"></g>
+</svg>
+<div class="route-legend"><span><i></i>Shortest geographic path</span><span><i></i>Ruhr-origin corridor · unverified</span></div>
+<p class="route-waypoints" id="route-waypoints"></p>
+<div class="route-readings" id="route-readings" aria-live="polite"></div>
+<p class="target-note" id="route-measurement-note" hidden>The saved RTT is comparable only if this origin matches where you tested. VPNs and proxies can change the path.</p>
+<details class="route-deep">
+<summary>Routing points, fiber and equipment</summary>
+<p>Distances are one-way. Each row uses a published cable-system length where stated or the shortest surface distance between waypoints. The corridor total is a model. Its RTT assumes silica fiber with a group index of 1.468 and the same path in both directions. Map curves schematically connect the waypoints. The selected cable, router models and actual route length require additional evidence.</p>
+<div class="table-scroll"><table><caption class="sr-only">Candidate corridor segments</caption><thead><tr><th scope="col">Segment</th><th scope="col">Medium</th><th scope="col">Distance</th><th scope="col">Next point</th></tr></thead><tbody id="route-segments"></tbody></table></div>
+<dl class="route-glossary">
+<dt>Access and backbone</dt><dd>Home Wi-Fi, DSL or cellular leads to the provider’s access network. Edge and core IP routers forward packets. Providers may exchange traffic at an internet exchange or through a private connection. G.652 and low-loss G.654.E are examples of terrestrial single-mode fiber.</dd>
+<dt>Landing stations and subsea fiber</dt><dd>Landing stations connect land networks to submarine optical systems. Long-haul systems can use low-loss single-mode fiber such as G.654. Optical repeaters amplify signals and normally stay invisible to IP traceroute.</dd>
+<dt>How to check your route</dt><dd>Trace from your own device to the exact test server to see responding outward hops. M-Lab archives server-side traces that can be linked by connection UUID. A trace can support a metro or carrier inference, while fiber type, cable geometry and router model require operator evidence.</dd>
+</dl>
+<div class="route-sources" id="route-references"></div>
+<div class="route-sources"><a href="https://www.measurementlab.net/kb/core-service-traceroute/">M‑Lab traceroute</a><a href="https://github.com/m-lab/siteinfo">M‑Lab site locations</a><a href="https://www.itu.int/ITU-T/recommendations/rec.aspx?rec=16060">ITU‑T G.652</a><a href="https://www.itu.int/ITU-T/recommendations/rec.aspx?rec=16061">ITU‑T G.654</a><a href="https://www.naturalearthdata.com/">Natural Earth basemap</a></div>
+<form id="route-origin">
+<div class="fields"><label>Approximate latitude<input type="number" name="latitude" min="-90" max="90" step="any" placeholder="51.35"></label><label>Approximate longitude<input type="number" name="longitude" min="-180" max="180" step="any" placeholder="7.24"></label></div>
+<button type="submit">Update map origin</button>
+<p id="route-origin-note" aria-live="polite">Starts at an approximate Ruhr-region point. Custom coordinates change the shortest-path reference and stay on this page.</p>
+</form>
+</details>
+</div>
+</details>
 <section class="method" id="method"><h2>Measurement method</h2>
 <details><summary>What the numbers mean</summary><p>Goodput counts application payload bytes over the browser’s elapsed request time. Idle and loaded latency measure small HTTPS requests. A result describes the full path to the selected target and includes browser and server overhead.</p></details>
 <details><summary>Cloudflare demo and pilot profiles</summary><p>The live demo uses Cloudflare’s public edge and a small payload budget. The edge can change between runs and lacks the pilot’s responder logs. The pilot profiles require controlled responders, record address family and HTTP version, and budget 214 MB per target per run. Loaded results require at least four probes. Probe timeouts contribute a 5,000 ms capped value.</p></details>

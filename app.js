@@ -9,6 +9,7 @@ const storageKey = 'linkbench.runs.v1';
 const saveKey = 'linkbench.settings.v1';
 const demoOrigin = 'https://speed.cloudflare.com';
 let controller;
+let refreshRouteMap;
 let runs = readStored(storageKey, []);
 const settings = readStored(saveKey, { endpoints: {} });
 
@@ -308,6 +309,7 @@ form.addEventListener('submit', async (event) => {
     id('badge').textContent = run.status;
     showMetrics(run);
     renderHistory();
+    refreshRouteMap?.();
   }
 });
 
@@ -325,3 +327,22 @@ for (const key of ['target', 'iface', 'uplink']) if (settings[key]) form.element
 updateTarget();
 showMetrics(runs[0]);
 renderHistory();
+
+const routeMap = id('route-map');
+let routeLoading = false;
+async function openRouteMap() {
+  routeMap.open = true;
+  if (refreshRouteMap || routeLoading) return;
+  routeLoading = true;
+  try {
+    const { setupRouteMap } = await import('./route-map.js?v=1');
+    refreshRouteMap = setupRouteMap(routeMap, () => runs);
+  } catch {
+    id('route-default').textContent = 'The route map could not load. Collapse it and reopen to retry.';
+  } finally {
+    routeLoading = false;
+  }
+}
+routeMap.addEventListener('toggle', () => { if (routeMap.open) openRouteMap(); });
+document.querySelector('nav a[href="#route-map"]').addEventListener('click', openRouteMap);
+if (location.hash === '#route-map') openRouteMap();

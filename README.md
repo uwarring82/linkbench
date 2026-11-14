@@ -12,6 +12,10 @@ Select **Worldwide · M-Lab NDT7**, choose at least two sites, and confirm M-Lab
 
 The measurements compete for bandwidth. Per-site goodput shows what that path achieved while the other sites were active. The JSON export records actual machine names, byte counts, phase durations, and offsets from the direction's start. CSV uses one row per site. NDT7 TCP RTT is distinct from the HTTPS timings of the Freiburg pilot. M-Lab receives and publishes the IP address, timestamp, and results under its [privacy policy](https://www.measurementlab.net/privacy/). Linkbench discards access tokens and client IP fields from its own history.
 
+## Explore network routes
+
+Open **Explore network routes** to compare a great-circle path with a candidate corridor for each M‑Lab site. The map uses city-level endpoint coordinates and illustrative waypoints. Distances use geographic segments, with operator-published cable-system lengths where labeled. The model has no per-run route attribution. An arbitrary latitude and longitude can be entered in the details panel and stay in the current page. The model and data sources are in `routes.js`; the Natural Earth coastline is projected into `route-land.svg` for offline use.
+
 ## Publish the frontend
 
 Create a public GitHub repository and push this project's files to `main`. In **Settings → Pages**, choose **Deploy from a branch**, **main**, and **/ (root)**. Pages serves the frontend only. All benchmark traffic goes directly from the browser to the selected responder, without a frontend proxy.
