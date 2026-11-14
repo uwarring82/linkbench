@@ -9,7 +9,9 @@ export const globalSites = [
 const locateOrigin = 'https://locate.measurementlab.net';
 const protocol = 'net.measurementlab.ndt.v7';
 const uploadDurationMs = 10_000;
-const maxQueued = 256 * 1024;
+const maxQueued = 2 * 1024 * 1024;
+const minimumInterruptedMs = 8_000;
+const clock = () => performance.timeOrigin + performance.now();
 
 async function discover(site, signal) {
   const url = new URL('/v2/nearest/ndt/ndt7', locateOrigin);
@@ -32,7 +34,7 @@ async function discover(site, signal) {
           socketUrl.pathname !== '/ndt/v7/' + direction ||
           !socketUrl.searchParams.has('access_token') || socketUrl.username || socketUrl.password) break;
       socketUrl.searchParams.set('client_name', 'linkbench');
-      socketUrl.searchParams.set('client_version', '1');
+      socketUrl.searchParams.set('client_version', '2');
       urls[direction] = socketUrl;
     }
     if (urls.download && urls.upload) return { machine, urls };
@@ -40,10 +42,10 @@ async function discover(site, signal) {
   throw new Error('No matching NDT7 server');
 }
 
-function transfer(url, direction, signal, waveStart, payload) {
+export function transfer(url, direction, signal, waveStart, payload) {
   if (signal.aborted) return Promise.resolve({ status: 'cancelled' });
   return new Promise((resolve) => {
-    const startOffsetMs = performance.now() - waveStart;
+    const startOffsetMs = clock() - waveStart;
     const socket = new WebSocket(url, protocol);
     socket.binaryType = 'arraybuffer';
     let openedAt;
@@ -52,6 +54,8 @@ function transfer(url, direction, signal, waveStart, payload) {
     let lastBodyAt;
     let lastReceipt;
     let clientUpload;
+    let serverTcpUpload;
+    let closeCode = null;
     let minRttUs;
     let pump;
     let watchdog;
@@ -65,25 +69,39 @@ function transfer(url, direction, signal, waveStart, payload) {
       clearInterval(pump);
       signal.removeEventListener('abort', abort);
       if (socket.readyState < WebSocket.CLOSING) socket.close();
-      const uploadReading = lastReceipt ?? clientUpload;
-      const source = downloading ? 'browser received' : lastReceipt ? 'server receipt'
+      const uploadReading = lastReceipt ?? serverTcpUpload ?? clientUpload;
+      const source = downloading ? 'browser received' : lastReceipt ? 'server receipt' : serverTcpUpload ? 'server TCP receive rate'
         : clientUpload ? 'browser sent estimate' : null;
       const appBytes = downloading ? bytes : (uploadReading?.bytes ?? null);
       const appMs = downloading ? (lastBodyAt === undefined ? null : lastBodyAt - openedAt) : (uploadReading?.ms ?? null);
-      const mbps = status === 'ok' && appBytes > 0 && appMs > 0 ? 8 * appBytes / (1000 * appMs) : null;
+      const canUseInterrupted = !downloading && status !== 'cancelled' && appMs >= minimumInterruptedMs;
+      const mbps = (status === 'ok' || canUseInterrupted) && appBytes > 0 && appMs > 0
+        ? 8 * appBytes / (1000 * appMs) : null;
+      const termination = status === 'ok' ? null : status;
+      if (canUseInterrupted && mbps !== null) status = 'ok';
       resolve({ status: status === 'ok' && mbps === null ? 'no measurement' : status,
         startOffsetMs, openOffsetMs: openedAt === undefined ? null : openedAt - waveStart,
         firstOffsetMs: firstOffsetMs ?? null,
-        endOffsetMs: performance.now() - waveStart, bytes: appBytes, elapsedMs: appMs, mbps, source,
+        endOffsetMs: clock() - waveStart, bytes: appBytes, elapsedMs: appMs, mbps, source, closeCode, termination,
         queuedUploadBytes: downloading ? null : bytes, minRttMs: minRttUs === undefined ? null : minRttUs / 1000 });
     };
     const abort = () => finish('cancelled');
     signal.addEventListener('abort', abort, { once: true });
     watchdog = setTimeout(() => finish('connection timeout'), 10_000);
+    const updateUploadEstimate = () => {
+      const elapsed = performance.now() - openedAt;
+      const sent = bytes - socket.bufferedAmount;
+      if (sent > 0 && elapsed > 0 && (!clientUpload || sent > clientUpload.bytes)) {
+        clientUpload = { bytes: sent, ms: elapsed };
+      }
+    };
     socket.onopen = () => {
       openedAt = performance.now();
       clearTimeout(watchdog);
-      watchdog = setTimeout(() => finish('test timeout'), 14_000);
+      watchdog = setTimeout(() => {
+        if (!downloading) updateUploadEstimate();
+        finish(downloading ? 'test timeout' : 'upload deadline');
+      }, downloading ? 14_000 : 11_500);
       if (downloading) return;
       const send = () => {
         if (socket.readyState !== WebSocket.OPEN) {
@@ -91,20 +109,20 @@ function transfer(url, direction, signal, waveStart, payload) {
           return;
         }
         const elapsed = performance.now() - openedAt;
-        const sent = bytes - socket.bufferedAmount;
-        if (sent > 0 && elapsed > 0) clientUpload = { bytes: sent, ms: elapsed };
+        updateUploadEstimate();
         if (elapsed >= uploadDurationMs) {
           clearInterval(pump);
           return;
         }
         try {
-          while (socket.bufferedAmount + payload.byteLength <= maxQueued &&
-                 socket.readyState === WebSocket.OPEN) {
-            socket.send(payload);
-            firstOffsetMs ??= performance.now() - waveStart;
-            bytes += payload.byteLength;
-            // Limit each browser task, including implementations that drain synchronously.
-            if (bytes % maxQueued === 0) break;
+          // WebKit can update bufferedAmount after this task. Send at most one frame.
+          const sent = clientUpload?.bytes ?? 0;
+          const exponent = Math.min(20, Math.floor(Math.log2(Math.max(65536, sent / 16))));
+          const frameSize = 2 ** exponent;
+          if (socket.bufferedAmount + frameSize <= maxQueued) {
+            socket.send(payload.subarray(0, frameSize));
+            firstOffsetMs ??= clock() - waveStart;
+            bytes += frameSize;
           }
         } catch {
           sendError = true;
@@ -133,18 +151,44 @@ function transfer(url, direction, signal, waveStart, payload) {
             ElapsedTime / 1000 >= (lastReceipt?.ms ?? 0)) {
           lastReceipt = { bytes: NumBytes, ms: ElapsedTime / 1000 };
         }
+        const { BytesReceived, ElapsedTime: tcpUs } = sample.TCPInfo ?? {};
+        if (!downloading && Number.isFinite(BytesReceived) && BytesReceived > 0 &&
+            Number.isFinite(tcpUs) && tcpUs > 0 && tcpUs / 1000 >= (serverTcpUpload?.ms ?? 0)) {
+          serverTcpUpload = { bytes: BytesReceived, ms: tcpUs / 1000 };
+        }
         // ConnectionInfo can contain client IP addresses. Do not retain it.
       } catch { /* Text measurements are optional. */ }
     };
     socket.onerror = () => { sendError = true; };
     socket.onclose = (event) => {
-      finish(!sendError && event.code === 1000 && event.wasClean ? 'ok' : 'connection interrupted');
+      closeCode = event.code;
+      if (!downloading && openedAt !== undefined) updateUploadEstimate();
+      const clean = event.wasClean && [1000, 1005].includes(event.code);
+      finish(!sendError && clean ? 'ok' : openedAt === undefined ? 'handshake failed' : 'connection interrupted');
     };
   });
 }
 
+function runUpload(url, signal, waveStart) {
+  if (signal.aborted) return Promise.resolve({ status: 'cancelled' });
+  return new Promise((resolve) => {
+    const worker = new Worker(new URL('./upload-worker.js?v=1', import.meta.url), { type: 'module' });
+    const finish = (result) => {
+      clearTimeout(deadline);
+      signal.removeEventListener('abort', abort);
+      worker.terminate();
+      resolve(result);
+    };
+    const abort = () => finish({ status: 'cancelled' });
+    const deadline = setTimeout(() => finish({ status: 'upload worker timeout' }), 25_000);
+    signal.addEventListener('abort', abort, { once: true });
+    worker.onmessage = (event) => finish(event.data);
+    worker.onerror = () => finish({ status: 'upload worker error' });
+    worker.postMessage({ url: url.href, waveStart });
+  });
+}
+
 export async function measureGlobal(run, signal, progress) {
-  const payload = crypto.getRandomValues(new Uint8Array(64 * 1024));
   const sites = run.regions;
   progress('Finding M-Lab servers');
   const resolved = await Promise.all(sites.map(async (site) => {
@@ -164,10 +208,16 @@ export async function measureGlobal(run, signal, progress) {
   }
   for (const direction of ['download', 'upload']) {
     progress(direction === 'download' ? 'Downloading from all available sites' : 'Uploading to all available sites');
-    const waveStart = performance.now();
+    const waveStart = clock();
     await Promise.all(sites.map(async (site, index) => {
       if (!resolved[index]) return;
-      site[direction] = await transfer(resolved[index].urls[direction], direction, signal, waveStart, payload);
+      const url = resolved[index].urls[direction];
+      try {
+        site[direction] = direction === 'upload' ? await runUpload(url, signal, waveStart)
+          : await transfer(url, direction, signal, waveStart);
+      } catch {
+        site[direction] = { status: 'could not start connection' };
+      }
     }));
     signal.throwIfAborted();
   }

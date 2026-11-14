@@ -7,7 +7,7 @@
 <meta name="description" content="Measure and compare network paths with an auditable test history.">
 <title>Linkbench · Network measurements</title>
 <link rel="stylesheet" href="./style.css?v=global-1">
-<script type="module" src="./app.js?v=global-2"></script>
+<script type="module" src="./app.js?v=global-3"></script>
 </head>
 <body>
 <header class="top"><div class="wrap masthead"><a class="brand" href="./" aria-label="Linkbench home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span> Linkbench</a><nav aria-label="Page"><a href="#test">Speed test</a><a href="#history">History</a><a href="#method">Method</a></nav></div></header>
@@ -63,7 +63,7 @@
 <section class="method" id="method"><h2>Measurement method</h2>
 <details><summary>What the numbers mean</summary><p>Goodput counts application payload bytes over the browser’s elapsed request time. Idle and loaded latency measure small HTTPS requests. A result describes the full path to the selected target and includes browser and server overhead.</p></details>
 <details><summary>Cloudflare demo and pilot profiles</summary><p>The live demo uses Cloudflare’s public edge and a small payload budget. The edge can change between runs and lacks the pilot’s responder logs. The pilot profiles require controlled responders, record address family and HTTP version, and budget 214 MB per target per run. Loaded results require at least four probes. Probe timeouts contribute a 5,000 ms capped value.</p></details>
-<details><summary>Worldwide NDT7 tests</summary><p>Downloads run together, followed by uploads together. Each site uses M-Lab’s NDT7 protocol. Linkbench shows download goodput from received bytes, upload goodput from server receipts when available (otherwise labeled as a browser estimate), and minimum server TCP RTT when available. TCP RTT and HTTPS request latency measure different things. Compare across runs with the same site selection and note any server changes.</p></details>
+<details><summary>Worldwide NDT7 tests</summary><p>Downloads run together, followed by uploads together. Each site uses M-Lab’s NDT7 protocol. Linkbench shows download goodput from received bytes, upload goodput from server receipts when available, with labeled server TCP rates or browser estimates as fallbacks, and minimum server TCP RTT when available. TCP RTT and HTTPS request latency measure different things. Compare across runs with the same site selection and note any server changes.</p></details>
 <details><summary>How to compare DSL and cellular</summary><p>Use the same target, browser, and local interface. Keep the VPN setting fixed. Enter a unique block label for each paired window and reuse it for the two uplinks. Six daytime and evening blocks form the Freiburg pilot. A win requires at least 20 ms and 25% lower upload-loaded latency in five of six eligible blocks.</p></details>
 </section>
 </main>
