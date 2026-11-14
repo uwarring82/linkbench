@@ -1,4 +1,4 @@
-import { transfer } from './global.js?v=3';
+import { transfer } from './global.js?v=4';
 
 self.onmessage = async ({ data: { url, waveStart } }) => {
   try {

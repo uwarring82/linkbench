@@ -1,5 +1,5 @@
 import { measure, median, profiles } from './measure.js';
-import { globalSites, measureGlobal } from './global.js?v=3';
+import { globalSites, measureGlobal } from './global.js?v=4';
 
 const id = (name) => document.getElementById(name);
 const form = id('settings');
@@ -57,6 +57,31 @@ function addText(parent, tag, text) {
   return node;
 }
 
+function regionalNotes(phase, direction) {
+  if (!phase) return [];
+  const normalClose = phase.closeCode === 1000;
+  const code = phase.closeCode === null || phase.closeCode === undefined ? '' : ' (' + phase.closeCode + ')';
+  if (phase.status !== 'ok') {
+    if (normalClose && ['connection interrupted', 'normal close with incomplete handshake'].includes(phase.status)) {
+      return ['Closed before a usable measurement'];
+    }
+    const notes = [phase.status + code];
+    if (Number.isFinite(phase.elapsedMs)) notes.push('Measured ' + formatted(phase.elapsedMs / 1000) + ' s');
+    return notes;
+  }
+  const notes = [];
+  if (phase.source === 'browser sent estimate') notes.push('Browser estimate');
+  if (phase.source === 'server TCP receive rate') notes.push('Server TCP rate');
+  if (direction === 'upload' && Number.isFinite(phase.elapsedMs)) {
+    notes.push('Measured ' + formatted(phase.elapsedMs / 1000) + ' s');
+  }
+  if (phase.termination && phase.termination !== 'upload deadline' &&
+      !(normalClose && ['connection interrupted', 'normal close with incomplete handshake'].includes(phase.termination))) {
+    notes.push(phase.termination + code);
+  }
+  return notes;
+}
+
 function regionTable(regions) {
   const wrap = document.createElement('div');
   wrap.className = 'table-scroll region-results';
@@ -73,13 +98,10 @@ function regionTable(regions) {
     const site = addText(row, 'td', region.city);
     if (region.machine) addText(site, 'small', region.machine.split('.')[0]);
     if (region.error) addText(site, 'small', region.error);
-    for (const phase of [region.download, region.upload]) {
+    for (const direction of ['download', 'upload']) {
+      const phase = region[direction];
       const cell = addText(row, 'td', formatted(phase?.mbps));
-      if (phase && phase.status !== 'ok') addText(cell, 'small', phase.status);
-      if (phase?.status === 'ok' && phase.source === 'browser sent estimate') addText(cell, 'small', 'Browser estimate');
-      if (phase?.status === 'ok' && phase.source === 'server TCP receive rate') addText(cell, 'small', 'Server TCP rate');
-      if (phase?.termination) addText(cell, 'small', phase.termination +
-        (phase.closeCode !== null && phase.closeCode !== undefined ? ' (' + phase.closeCode + ')' : ''));
+      for (const note of regionalNotes(phase, direction)) addText(cell, 'small', note);
     }
     const rtts = [region.download?.minRttMs, region.upload?.minRttMs].filter(Number.isFinite);
     addText(row, 'td', formatted(rtts.length ? Math.min(...rtts) : null));
@@ -185,7 +207,7 @@ function csvField(value) {
 }
 
 const columns = ['time', 'id', 'target', 'endpoint', 'iface', 'uplink', 'vpn', 'block', 'note', 'status',
-  'goodputProfile', 'loadedProfile', ...metricKeys, 'flags', 'site', 'city', 'machine', 'minTcpRttMs', 'downloadStatus', 'uploadStatus', 'uploadSource', 'uploadTermination', 'uploadCloseCode'];
+  'goodputProfile', 'loadedProfile', ...metricKeys, 'flags', 'site', 'city', 'machine', 'minTcpRttMs', 'downloadStatus', 'uploadStatus', 'uploadSource', 'uploadTermination', 'uploadCloseCode', 'uploadWasClean'];
 
 id('export-json').onclick = () => downloadFile('linkbench-history.json', JSON.stringify(runs, null, 2), 'application/json');
 id('export-csv').onclick = () => {
@@ -193,7 +215,7 @@ id('export-csv').onclick = () => {
     const rtts = [region.download?.minRttMs, region.upload?.minRttMs].filter(Number.isFinite);
     return { ...run, site: region.id, city: region.city, machine: region.machine,
       minTcpRttMs: rtts.length ? Math.min(...rtts) : null, down: region.download?.mbps, up: region.upload?.mbps,
-      downloadStatus: region.download?.status ?? region.error, uploadStatus: region.upload?.status ?? region.error, uploadSource: region.upload?.source, uploadTermination: region.upload?.termination, uploadCloseCode: region.upload?.closeCode };
+      downloadStatus: region.download?.status ?? region.error, uploadStatus: region.upload?.status ?? region.error, uploadSource: region.upload?.source, uploadTermination: region.upload?.termination, uploadCloseCode: region.upload?.closeCode, uploadWasClean: region.upload?.wasClean };
   }) : [{ ...run, ...run.metrics }]);
   downloadFile('linkbench-history.csv', [columns.join(','), ...records.map((record) =>
     columns.map((key) => csvField(record[key])).join(','))].join('\r\n'), 'text/csv;charset=utf-8');

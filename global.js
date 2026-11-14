@@ -56,6 +56,7 @@ export function transfer(url, direction, signal, waveStart, payload) {
     let clientUpload;
     let serverTcpUpload;
     let closeCode = null;
+    let wasClean = null;
     let minRttUs;
     let pump;
     let watchdog;
@@ -82,7 +83,7 @@ export function transfer(url, direction, signal, waveStart, payload) {
       resolve({ status: status === 'ok' && mbps === null ? 'no measurement' : status,
         startOffsetMs, openOffsetMs: openedAt === undefined ? null : openedAt - waveStart,
         firstOffsetMs: firstOffsetMs ?? null,
-        endOffsetMs: clock() - waveStart, bytes: appBytes, elapsedMs: appMs, mbps, source, closeCode, termination,
+        endOffsetMs: clock() - waveStart, bytes: appBytes, elapsedMs: appMs, mbps, source, closeCode, wasClean, termination,
         queuedUploadBytes: downloading ? null : bytes, minRttMs: minRttUs === undefined ? null : minRttUs / 1000 });
     };
     const abort = () => finish('cancelled');
@@ -162,9 +163,13 @@ export function transfer(url, direction, signal, waveStart, payload) {
     socket.onerror = () => { sendError = true; };
     socket.onclose = (event) => {
       closeCode = event.code;
+      wasClean = event.wasClean;
       if (!downloading && openedAt !== undefined) updateUploadEstimate();
-      const clean = event.wasClean && [1000, 1005].includes(event.code);
-      finish(!sendError && clean ? 'ok' : openedAt === undefined ? 'handshake failed' : 'connection interrupted');
+      const clean = !sendError && wasClean && [1000, 1005].includes(closeCode);
+      if (clean) finish('ok');
+      else if (openedAt === undefined) finish('handshake failed');
+      else if (closeCode === 1000) finish('normal close with incomplete handshake');
+      else finish('connection interrupted');
     };
   });
 }
@@ -172,7 +177,7 @@ export function transfer(url, direction, signal, waveStart, payload) {
 function runUpload(url, signal, waveStart) {
   if (signal.aborted) return Promise.resolve({ status: 'cancelled' });
   return new Promise((resolve) => {
-    const worker = new Worker(new URL('./upload-worker.js?v=1', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('./upload-worker.js?v=2', import.meta.url), { type: 'module' });
     const finish = (result) => {
       clearTimeout(deadline);
       signal.removeEventListener('abort', abort);
