@@ -215,7 +215,7 @@ form.addEventListener('submit', async (event) => {
   }
 });
 
-for (const key of ['target', 'iface', 'uplink']) if (settings[key]) id(key).value = settings[key];
+for (const key of ['target', 'iface', 'uplink']) if (settings[key]) form.elements.namedItem(key).value = settings[key];
 updateTarget();
 showMetrics(runs[0]);
 renderHistory();
