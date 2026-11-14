@@ -1,8 +1,9 @@
 import { measure, median, profiles } from './measure.js';
+import { globalSites, measureGlobal } from './global.js?v=1';
 
 const id = (name) => document.getElementById(name);
 const form = id('settings');
-const names = { demo: 'Cloudflare demo', freiburg: 'Freiburg', control: 'Independent', lan: 'Home LAN' };
+const names = { demo: 'Cloudflare demo', global: 'Worldwide · M-Lab NDT7', freiburg: 'Freiburg', control: 'Independent', lan: 'Home LAN' };
 const metricKeys = ['down', 'up', 'idle', 'downLoaded', 'upLoaded'];
 const storageKey = 'linkbench.runs.v1';
 const saveKey = 'linkbench.settings.v1';
@@ -22,16 +23,26 @@ function save(key, value) {
 function updateTarget() {
   const target = id('target').value;
   const demo = target === 'demo';
-  id('custom').hidden = demo;
-  id('endpoint').required = !demo;
+  const global = target === 'global';
+  id('global-settings').hidden = !global;
+  id('custom').hidden = demo || global;
+  id('endpoint').required = !demo && !global;
   id('endpoint').value = settings.endpoints[target] ?? '';
   id('target-note').textContent = demo
     ? 'Measures the public Cloudflare edge. Its location may vary. Cloudflare receives the test traffic.'
-    : 'Enter the HTTPS origin of a deployed Linkbench responder.';
-  id('budget').textContent = (demo ? profiles.demo.bytes : profiles.pilot.bytes) / 1e6 + ' MB maximum test payload, plus protocol overhead.';
+    : global ? 'Each site uses the same NDT7 protocol. All selected sites run together in each direction.'
+      : 'Enter the HTTPS origin of a deployed Linkbench responder.';
+  id('budget').textContent = global ? 'Up to about 10 seconds per direction once connected. Fast links can use substantial data. Best on an unmetered connection.' : (demo ? profiles.demo.bytes : profiles.pilot.bytes) / 1e6 + ' MB maximum test payload, plus protocol overhead.';
 }
 
 function showMetrics(run) {
+  const global = run?.target === 'global';
+  id('single-metrics').hidden = global;
+  id('global-readout').hidden = !global;
+  if (global) {
+    id('global-results').replaceChildren(regionTable(run.regions));
+    return;
+  }
   for (const key of metricKeys) id(key).textContent = formatted(run?.metrics[key]);
 }
 
@@ -44,6 +55,33 @@ function addText(parent, tag, text) {
   node.textContent = text;
   parent.append(node);
   return node;
+}
+
+function regionTable(regions) {
+  const wrap = document.createElement('div');
+  wrap.className = 'table-scroll region-results';
+  const table = document.createElement('table');
+  table.setAttribute('aria-label', 'Regional NDT7 results');
+  const head = table.createTHead().insertRow();
+  for (const label of ['Site', 'Down (Mbps)', 'Up (Mbps)', 'Min TCP RTT (ms)']) {
+    const cell = addText(head, 'th', label);
+    cell.scope = 'col';
+  }
+  const body = table.createTBody();
+  for (const region of regions) {
+    const row = body.insertRow();
+    const site = addText(row, 'td', region.city);
+    if (region.machine) addText(site, 'small', region.machine.split('.')[0]);
+    if (region.error) addText(site, 'small', region.error);
+    for (const phase of [region.download, region.upload]) {
+      const cell = addText(row, 'td', formatted(phase?.mbps));
+      if (phase && phase.status !== 'ok') addText(cell, 'small', phase.status);
+    }
+    const rtts = [region.download?.minRttMs, region.upload?.minRttMs].filter(Number.isFinite);
+    addText(row, 'td', formatted(rtts.length ? Math.min(...rtts) : null));
+  }
+  wrap.append(table);
+  return wrap;
 }
 
 function metadataFor(run) {
@@ -113,7 +151,15 @@ function renderHistory() {
     const row = document.createElement('tr');
     addText(row, 'td', names[run.target] + ' · ' + new Date(run.time).toLocaleString());
     addText(row, 'td', [run.iface, run.uplink, run.vpn].join(' / '));
-    for (const key of ['down', 'up', 'idle', 'upLoaded']) addText(row, 'td', formatted(run.metrics[key]));
+    if (run.target === 'global') {
+      const cell = row.insertCell();
+      cell.colSpan = 4;
+      const details = addText(cell, 'details', '');
+      addText(details, 'summary', run.regions.length + ' sites · show regional results');
+      details.append(regionTable(run.regions));
+    } else {
+      for (const key of ['down', 'up', 'idle', 'upLoaded']) addText(row, 'td', formatted(run.metrics[key]));
+    }
     addText(row, 'td', run.status + (run.flags.length ? ' · ' + run.flags.join(', ') : ''));
     rows.append(row);
   }
@@ -135,11 +181,19 @@ function csvField(value) {
 }
 
 const columns = ['time', 'id', 'target', 'endpoint', 'iface', 'uplink', 'vpn', 'block', 'note', 'status',
-  'goodputProfile', 'loadedProfile', ...metricKeys, 'flags'];
+  'goodputProfile', 'loadedProfile', ...metricKeys, 'flags', 'site', 'city', 'machine', 'minTcpRttMs', 'downloadStatus', 'uploadStatus'];
 
 id('export-json').onclick = () => downloadFile('linkbench-history.json', JSON.stringify(runs, null, 2), 'application/json');
-id('export-csv').onclick = () => downloadFile('linkbench-history.csv', [columns.join(','), ...runs.map((run) =>
-  columns.map((key) => csvField(run.metrics[key] ?? run[key])).join(','))].join('\r\n'), 'text/csv;charset=utf-8');
+id('export-csv').onclick = () => {
+  const records = runs.flatMap((run) => run.target === 'global' ? run.regions.map((region) => {
+    const rtts = [region.download?.minRttMs, region.upload?.minRttMs].filter(Number.isFinite);
+    return { ...run, site: region.id, city: region.city, machine: region.machine,
+      minTcpRttMs: rtts.length ? Math.min(...rtts) : null, down: region.download?.mbps, up: region.upload?.mbps,
+      downloadStatus: region.download?.status ?? region.error, uploadStatus: region.upload?.status ?? region.error };
+  }) : [{ ...run, ...run.metrics }]);
+  downloadFile('linkbench-history.csv', [columns.join(','), ...records.map((record) =>
+    columns.map((key) => csvField(record[key])).join(','))].join('\r\n'), 'text/csv;charset=utf-8');
+};
 for (const name of ['filter-target', 'filter-uplink', 'filter-interface']) id(name).onchange = renderHistory;
 id('target').onchange = updateTarget;
 id('cancel').onclick = () => controller?.abort('Cancelled');
@@ -157,10 +211,16 @@ form.addEventListener('submit', async (event) => {
   if (controller) return;
   const values = Object.fromEntries(new FormData(form));
   const demo = values.target === 'demo';
+  const global = values.target === 'global';
+  const regions = globalSites.filter((region) => values[region.id] === 'on').map((region) => ({ ...region }));
   let endpoint = demoOrigin;
   try {
     if (!values.iface || !values.uplink) throw new Error('Select the interface and uplink to label this test.');
-    if (!demo) {
+    if (global) {
+      if (!id('mlab-consent').checked) throw new Error('Review the M-Lab privacy policy and check the consent box before testing.');
+      if (regions.length < 2) throw new Error('Choose at least two sites for a simultaneous test.');
+      endpoint = 'https://locate.measurementlab.net';
+    } else if (!demo) {
       const url = new URL(values.endpoint);
       if (url.username || url.password || url.search || url.hash || url.pathname !== '/' ||
           (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))) {
@@ -172,32 +232,41 @@ form.addEventListener('submit', async (event) => {
     id('message').textContent = error.message;
     return;
   }
-  if (!demo) settings.endpoints[values.target] = endpoint;
+  if (!demo && !global) settings.endpoints[values.target] = endpoint;
   settings.target = values.target;
   settings.iface = values.iface;
   settings.uplink = values.uplink;
+  if (global) settings.regions = regions.map((region) => region.id);
   save(saveKey, settings);
   const { target, iface, uplink, vpn, block, note } = values;
   const run = { schema: 1, id: crypto.randomUUID(), time: new Date().toISOString(), target, endpoint, iface, uplink, vpn,
-    block: block.trim(), note: note.trim(), browser: navigator.userAgent, goodputProfile: demo ? 'edge-demo-v1' : 'https-goodput-v1',
-    loadedProfile: demo ? null : 'https-loaded-v1', status: 'Running', flags: [], metrics: {}, loaded: {}, samples: [] };
+    block: block.trim(), note: note.trim(), browser: navigator.userAgent, goodputProfile: global ? 'ndt7-parallel-v1' : demo ? 'edge-demo-v1' : 'https-goodput-v1',
+    loadedProfile: (demo || global) ? null : 'https-loaded-v1', status: 'Running', flags: [], metrics: {}, loaded: {}, samples: [] };
+  if (global) run.regions = regions;
   controller = new AbortController();
   controller.interfaceType = navigator.connection?.type;
   for (const item of form.elements) if (item.id !== 'cancel') item.disabled = true;
   id('cancel').hidden = false;
   id('badge').textContent = 'Testing';
-  id('progress').max = demo ? 15 : 17;
+  id('progress').max = global ? 3 : demo ? 15 : 17;
   id('progress').value = 0;
   showMetrics(run);
   try {
-    await measure(run, controller.signal, (message) => {
+    const onProgress = (message) => {
       id('message').textContent = message;
       id('progress').value++;
       showMetrics(run);
-    });
-    run.status = run.goodputComplete && (demo || [run.metrics.downLoaded, run.metrics.upLoaded].every(Number.isFinite))
-      ? 'Complete' : 'Partial';
-    id('message').textContent = run.flags.length ? run.flags.join('. ') + '.' : 'Measurement recorded.';
+    };
+    if (global) {
+      const finished = await measureGlobal(run, controller.signal, onProgress);
+      run.status = finished === regions.length ? 'Complete' : 'Partial';
+      id('message').textContent = finished + ' of ' + regions.length + ' sites completed both directions.';
+    } else {
+      await measure(run, controller.signal, onProgress);
+      run.status = run.goodputComplete && (demo || [run.metrics.downLoaded, run.metrics.upLoaded].every(Number.isFinite))
+        ? 'Complete' : 'Partial';
+      id('message').textContent = run.flags.length ? run.flags.join('. ') + '.' : 'Measurement recorded.';
+    }
   } catch (error) {
     run.cancelled = controller.signal.aborted;
     run.status = run.cancelled ? 'Cancelled' : 'Partial';
@@ -209,12 +278,23 @@ form.addEventListener('submit', async (event) => {
     controller = null;
     for (const item of form.elements) item.disabled = false;
     id('cancel').hidden = true;
+    if (global) id('mlab-consent').checked = false;
     id('badge').textContent = run.status;
     showMetrics(run);
     renderHistory();
   }
 });
 
+for (const site of globalSites) {
+  const label = addText(id('regions'), 'label', '');
+  label.className = 'check';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.name = site.id;
+  input.checked = settings.regions ? settings.regions.includes(site.id) : true;
+  label.append(input);
+  addText(label, 'span', site.city);
+}
 for (const key of ['target', 'iface', 'uplink']) if (settings[key]) form.elements.namedItem(key).value = settings[key];
 updateTarget();
 showMetrics(runs[0]);

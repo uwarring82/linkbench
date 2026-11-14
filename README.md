@@ -6,6 +6,12 @@ Browser speed tests with connection labels, local history, JSON and CSV export, 
 
 From the repository root run `python3 -m http.server 8000` and visit <http://localhost:8000>. Select the Cloudflare demo, label your connection, and run a test. The demo uses Cloudflare's [public speed-test endpoints](https://github.com/cloudflare/speedtest), transfers up to 10 MB of application payload, and provides idle latency and basic goodput. Its upload byte count is the submitted payload size. The public edge may vary and the demo produces no Freiburg comparison. Results stay in this browser unless exported. The chosen responder receives requests and sees the client connection.
 
+## Worldwide measurements
+
+Select **Worldwide · M-Lab NDT7**, choose at least two sites, and confirm M-Lab's data policy before starting. The fixed site catalog spans Frankfurt, New York, Johannesburg, Singapore, and Sydney. M-Lab's [Locate v2 API](https://www.measurementlab.net/develop/locate-v2/) supplies the exact machine and expiring URLs at run time. The app starts all available downloads together, then starts all available uploads together. Endpoint errors are shown per site. Each direction can use about ten seconds' worth of application data on the shared connection, so use an unmetered connection if data cost matters.
+
+The measurements compete for bandwidth. Per-site goodput shows what that path achieved while the other sites were active. The JSON export records actual machine names, byte counts, phase durations, and offsets from the direction's start. CSV uses one row per site. NDT7 TCP RTT is distinct from the HTTPS timings of the Freiburg pilot. M-Lab receives and publishes the IP address, timestamp, and results under its [privacy policy](https://www.measurementlab.net/privacy/). Linkbench discards access tokens and client IP fields from its own history.
+
 ## Publish the frontend
 
 Create a public GitHub repository and push this project's files to `main`. In **Settings → Pages**, choose **Deploy from a branch**, **main**, and **/ (root)**. Pages serves the frontend only. All benchmark traffic goes directly from the browser to the selected responder, without a frontend proxy.

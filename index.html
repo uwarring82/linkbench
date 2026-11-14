@@ -6,8 +6,8 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Measure and compare network paths with an auditable test history.">
 <title>Linkbench · Network measurements</title>
-<link rel="stylesheet" href="./style.css">
-<script type="module" src="./app.js?v=2"></script>
+<link rel="stylesheet" href="./style.css?v=global-1">
+<script type="module" src="./app.js?v=global-1"></script>
 </head>
 <body>
 <header class="top"><div class="wrap masthead"><a class="brand" href="./" aria-label="Linkbench home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span> Linkbench</a><nav aria-label="Page"><a href="#test">Speed test</a><a href="#history">History</a><a href="#method">Method</a></nav></div></header>
@@ -17,9 +17,13 @@
 <section class="panel setup" aria-labelledby="test-setup">
 <h2 id="test-setup">Test setup</h2>
 <form id="settings">
-<label>Benchmark target<select name="target" id="target"><option value="demo">Cloudflare edge · live demo</option><option value="freiburg">Freiburg · custom responder</option><option value="control">Independent · custom responder</option><option value="lan">Home LAN · custom responder</option></select></label>
+<label>Benchmark target<select name="target" id="target"><option value="demo">Cloudflare edge · live demo</option><option value="global">Worldwide · M-Lab NDT7</option><option value="freiburg">Freiburg · custom responder</option><option value="control">Independent · custom responder</option><option value="lan">Home LAN · custom responder</option></select></label>
 <label id="custom" hidden>Responder origin<input id="endpoint" name="endpoint" type="url" placeholder="https://benchmark.example.org" autocomplete="off"></label>
 <p class="target-note" id="target-note"></p>
+<div class="global-settings" id="global-settings" hidden>
+<fieldset><legend>Regions to test together</legend><div id="regions"></div></fieldset>
+<label class="check"><input id="mlab-consent" type="checkbox"><span>I agree to run tests that M-Lab publishes with my IP address, timestamp, and results. <a href="https://www.measurementlab.net/privacy/" target="_blank" rel="noopener noreferrer">M-Lab privacy policy</a></span></label>
+</div>
 <div class="fields">
 <label>Local interface<select name="iface" id="iface"><option value="">Select interface</option><option>Wi-Fi</option><option>Ethernet</option><option>Direct cellular</option><option>USB tether</option><option>Other / unknown</option></select></label>
 <label>Internet uplink<select name="uplink"><option value="">Select uplink</option><option>DSL</option><option>Cellular</option><option>Other / unknown</option></select></label>
@@ -33,13 +37,14 @@
 </section>
 <section class="panel readout" aria-labelledby="results-title">
 <div class="section-title"><h2 id="results-title">Latest measurement</h2><span class="status" id="badge">Ready</span></div>
-<div class="metrics">
+<div class="metrics" id="single-metrics">
 <div><span>Download</span><strong id="down">—</strong><small>Mbps</small></div>
 <div><span>Upload</span><strong id="up">—</strong><small>Mbps</small></div>
 <div><span>Idle latency</span><strong id="idle">—</strong><small>ms</small></div>
 <div><span>During download</span><strong id="downLoaded">—</strong><small>ms</small></div>
 <div><span>During upload</span><strong id="upLoaded">—</strong><small>ms</small></div>
 </div>
+<div id="global-readout" hidden><p class="target-note">Sites run together within each direction. The numbers show the share achieved by each path while competing for the same connection.</p><div id="global-results"></div></div>
 <label class="sr-only" for="progress">Test progress</label><progress id="progress" max="15" value="0"></progress>
 <p id="message" class="message" role="status" aria-live="polite">Select your connection details and run a test.</p>
 </section>
@@ -47,7 +52,7 @@
 <section class="history" id="history" aria-labelledby="history-title">
 <div class="section-title"><div><h2 id="history-title">Test history</h2><p>Stored in this browser. Export results to keep a copy.</p></div><div class="exports"><button id="export-json" type="button">Export JSON</button><button id="export-csv" type="button">Export CSV</button></div></div>
 <div class="panel history-panel">
-<div class="filters"><label>Target<select id="filter-target"><option value="">All targets</option><option value="demo">Cloudflare demo</option><option value="freiburg">Freiburg</option><option value="control">Independent</option><option value="lan">Home LAN</option></select></label>
+<div class="filters"><label>Target<select id="filter-target"><option value="">All targets</option><option value="demo">Cloudflare demo</option><option value="global">Worldwide · NDT7</option><option value="freiburg">Freiburg</option><option value="control">Independent</option><option value="lan">Home LAN</option></select></label>
 <label>Uplink<select id="filter-uplink"><option value="">All uplinks</option><option>DSL</option><option>Cellular</option><option>Other / unknown</option></select></label>
 <label>Local interface<select id="filter-interface"><option value="">All interfaces</option><option>Wi-Fi</option><option>Ethernet</option><option>Direct cellular</option><option>USB tether</option><option>Other / unknown</option></select></label></div>
 <p id="empty" class="empty">Your first completed test will appear here.</p>
@@ -58,6 +63,7 @@
 <section class="method" id="method"><h2>Measurement method</h2>
 <details><summary>What the numbers mean</summary><p>Goodput counts application payload bytes over the browser’s elapsed request time. Idle and loaded latency measure small HTTPS requests. A result describes the full path to the selected target and includes browser and server overhead.</p></details>
 <details><summary>Cloudflare demo and pilot profiles</summary><p>The live demo uses Cloudflare’s public edge and a small payload budget. The edge can change between runs and lacks the pilot’s responder logs. The pilot profiles require controlled responders, record address family and HTTP version, and budget 214 MB per target per run. Loaded results require at least four probes. Probe timeouts contribute a 5,000 ms capped value.</p></details>
+<details><summary>Worldwide NDT7 tests</summary><p>Downloads run together, followed by uploads together. Each site uses M-Lab’s NDT7 protocol. Linkbench shows download goodput from received bytes, upload goodput from server receipts, and minimum server TCP RTT when available. TCP RTT and HTTPS request latency measure different things. Compare across runs with the same site selection and note any server changes.</p></details>
 <details><summary>How to compare DSL and cellular</summary><p>Use the same target, browser, and local interface. Keep the VPN setting fixed. Enter a unique block label for each paired window and reuse it for the two uplinks. Six daytime and evening blocks form the Freiburg pilot. A win requires at least 20 ms and 25% lower upload-loaded latency in five of six eligible blocks.</p></details>
 </section>
 </main>
