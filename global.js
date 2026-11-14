@@ -51,6 +51,7 @@ function transfer(url, direction, signal, waveStart, payload) {
     let bytes = 0;
     let lastBodyAt;
     let lastReceipt;
+    let clientUpload;
     let minRttUs;
     let pump;
     let watchdog;
@@ -64,25 +65,35 @@ function transfer(url, direction, signal, waveStart, payload) {
       clearInterval(pump);
       signal.removeEventListener('abort', abort);
       if (socket.readyState < WebSocket.CLOSING) socket.close();
-      const appBytes = downloading ? bytes : (lastReceipt?.bytes ?? null);
-      const appMs = downloading ? (lastBodyAt === undefined ? null : lastBodyAt - openedAt) : (lastReceipt?.ms ?? null);
+      const uploadReading = lastReceipt ?? clientUpload;
+      const source = downloading ? 'browser received' : lastReceipt ? 'server receipt'
+        : clientUpload ? 'browser sent estimate' : null;
+      const appBytes = downloading ? bytes : (uploadReading?.bytes ?? null);
+      const appMs = downloading ? (lastBodyAt === undefined ? null : lastBodyAt - openedAt) : (uploadReading?.ms ?? null);
       const mbps = status === 'ok' && appBytes > 0 && appMs > 0 ? 8 * appBytes / (1000 * appMs) : null;
       resolve({ status: status === 'ok' && mbps === null ? 'no measurement' : status,
         startOffsetMs, openOffsetMs: openedAt === undefined ? null : openedAt - waveStart,
         firstOffsetMs: firstOffsetMs ?? null,
-        endOffsetMs: performance.now() - waveStart, bytes: appBytes, elapsedMs: appMs, mbps,
+        endOffsetMs: performance.now() - waveStart, bytes: appBytes, elapsedMs: appMs, mbps, source,
         queuedUploadBytes: downloading ? null : bytes, minRttMs: minRttUs === undefined ? null : minRttUs / 1000 });
     };
     const abort = () => finish('cancelled');
     signal.addEventListener('abort', abort, { once: true });
-    watchdog = setTimeout(() => finish('connection timeout'), 8500);
+    watchdog = setTimeout(() => finish('connection timeout'), 10_000);
     socket.onopen = () => {
       openedAt = performance.now();
       clearTimeout(watchdog);
       watchdog = setTimeout(() => finish('test timeout'), 14_000);
       if (downloading) return;
       const send = () => {
-        if (socket.readyState !== WebSocket.OPEN || performance.now() - openedAt >= uploadDurationMs) {
+        if (socket.readyState !== WebSocket.OPEN) {
+          clearInterval(pump);
+          return;
+        }
+        const elapsed = performance.now() - openedAt;
+        const sent = bytes - socket.bufferedAmount;
+        if (sent > 0 && elapsed > 0) clientUpload = { bytes: sent, ms: elapsed };
+        if (elapsed >= uploadDurationMs) {
           clearInterval(pump);
           return;
         }
@@ -147,8 +158,11 @@ export async function measureGlobal(run, signal, progress) {
     }
   }));
   signal.throwIfAborted();
+  if (resolved.filter(Boolean).length < 2) {
+    for (const site of sites) site.error ??= 'Need at least two available sites';
+    return 0;
+  }
   for (const direction of ['download', 'upload']) {
-    if (!resolved.some(Boolean)) break;
     progress(direction === 'download' ? 'Downloading from all available sites' : 'Uploading to all available sites');
     const waveStart = performance.now();
     await Promise.all(sites.map(async (site, index) => {

@@ -1,5 +1,5 @@
 import { measure, median, profiles } from './measure.js';
-import { globalSites, measureGlobal } from './global.js?v=1';
+import { globalSites, measureGlobal } from './global.js?v=2';
 
 const id = (name) => document.getElementById(name);
 const form = id('settings');
@@ -76,6 +76,7 @@ function regionTable(regions) {
     for (const phase of [region.download, region.upload]) {
       const cell = addText(row, 'td', formatted(phase?.mbps));
       if (phase && phase.status !== 'ok') addText(cell, 'small', phase.status);
+      if (phase?.status === 'ok' && phase.source === 'browser sent estimate') addText(cell, 'small', 'Browser estimate');
     }
     const rtts = [region.download?.minRttMs, region.upload?.minRttMs].filter(Number.isFinite);
     addText(row, 'td', formatted(rtts.length ? Math.min(...rtts) : null));
@@ -181,7 +182,7 @@ function csvField(value) {
 }
 
 const columns = ['time', 'id', 'target', 'endpoint', 'iface', 'uplink', 'vpn', 'block', 'note', 'status',
-  'goodputProfile', 'loadedProfile', ...metricKeys, 'flags', 'site', 'city', 'machine', 'minTcpRttMs', 'downloadStatus', 'uploadStatus'];
+  'goodputProfile', 'loadedProfile', ...metricKeys, 'flags', 'site', 'city', 'machine', 'minTcpRttMs', 'downloadStatus', 'uploadStatus', 'uploadSource'];
 
 id('export-json').onclick = () => downloadFile('linkbench-history.json', JSON.stringify(runs, null, 2), 'application/json');
 id('export-csv').onclick = () => {
@@ -189,7 +190,7 @@ id('export-csv').onclick = () => {
     const rtts = [region.download?.minRttMs, region.upload?.minRttMs].filter(Number.isFinite);
     return { ...run, site: region.id, city: region.city, machine: region.machine,
       minTcpRttMs: rtts.length ? Math.min(...rtts) : null, down: region.download?.mbps, up: region.upload?.mbps,
-      downloadStatus: region.download?.status ?? region.error, uploadStatus: region.upload?.status ?? region.error };
+      downloadStatus: region.download?.status ?? region.error, uploadStatus: region.upload?.status ?? region.error, uploadSource: region.upload?.source };
   }) : [{ ...run, ...run.metrics }]);
   downloadFile('linkbench-history.csv', [columns.join(','), ...records.map((record) =>
     columns.map((key) => csvField(record[key])).join(','))].join('\r\n'), 'text/csv;charset=utf-8');
