@@ -1,4 +1,4 @@
-import { atlasStops, corridors, tours } from './corridors.js?v=1';
+import { atlasStops, corridors, tours } from './corridors.js?v=2';
 import { distanceKm, mapPath, mapPoint } from './routes.js?v=1';
 
 const atlas = 'https://atlas.ripe.net';

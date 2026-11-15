@@ -12,7 +12,7 @@ export const atlasStops = {
   la: stop('Los Angeles', [-118.25938, 34.04879], 6989, 29751736, 29751735),
   seattle: stop('Seattle', [-122.33974, 47.61443], 6947, 79346739, 79346738),
   tokyo: stop('Tokyo', [139.74806, 35.61746], 6983, 79354268, 79354267),
-  marseille: stop('Marseille', [5.49528, 43.29243], 7293, 64348795, 64348794),
+  marseille: stop('Marseille', [5.33820, 43.36084], 7450, 85987221, 85987220),
 };
 
 const landing = (name, coords) => ({ name, coords });
