@@ -1,5 +1,8 @@
 import { defaultOrigin, distanceKm, estimateRoute, fiberRttMs, mapPath, mapPoint, routeModels } from './routes.js?v=1';
 
+import { setupMapViewport } from './map-viewport.js?v=1';
+import { setupFiberMap } from './fiber-map.js?v=1';
+
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const integer = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
@@ -19,6 +22,24 @@ function addText(parent, tag, value) {
   return node;
 }
 
+function marker(parent, point, className, radius, labelSide = 'above') {
+  const [x, y] = mapPoint(point.coords);
+  const group = makeSvg('g', { transform: 'translate(' + x + ' ' + y + ')' });
+  const display = makeSvg('g', { class: 'map-marker' });
+  display.append(makeSvg('circle', { r: radius, class: className }));
+  const nearRightEdge = x > 840;
+  const label = makeSvg('text', {
+    x: nearRightEdge ? -8 : 8, y: labelSide === 'above' ? -7 : 15,
+    'text-anchor': nearRightEdge ? 'end' : 'start',
+  });
+  label.textContent = point.name;
+  display.append(label);
+  const title = makeSvg('title', {});
+  title.textContent = point.name;
+  group.append(title, display);
+  parent.append(group);
+}
+
 export function setupRouteMap(root, getRuns) {
   const find = (id) => root.querySelector('#' + id);
   const select = find('route-destination');
@@ -26,9 +47,17 @@ export function setupRouteMap(root, getRuns) {
   const readout = find('route-readings');
   const points = find('route-points');
   let origin = defaultOrigin;
+  let mode = 'local';
+  const svg = find('route-map-image');
+  const viewport = setupMapViewport(svg, {
+    in: find('map-zoom-in'), out: find('map-zoom-out'),
+    reset: find('map-reset'), value: find('map-zoom-value'),
+  });
+  const fiberMap = setupFiberMap(find, svg, viewport, { makeSvg, marker, addText, formatKm, formatMs });
   find('route-basemap').setAttribute('href', './route-land.svg');
 
   function draw() {
+    if (mode !== 'local') return;
     const model = routeModels[select.value];
     const result = estimateRoute(model);
     const destination = result.legs.at(-1).point;
@@ -49,14 +78,8 @@ export function setupRouteMap(root, getRuns) {
     points.replaceChildren();
     const mapPoints = origin === defaultOrigin ? waypoints : [...waypoints, origin];
     for (const point of mapPoints) {
-      const [x, y] = mapPoint(point.coords);
       const endpoint = [defaultOrigin, destination, origin].includes(point);
-      const marker = makeSvg('circle', { cx: x, cy: y, r: endpoint ? 6 : 3.5,
-        class: endpoint ? 'route-endpoint' : 'route-waypoint' });
-      const title = makeSvg('title', {});
-      title.textContent = point.name;
-      marker.append(title);
-      points.append(marker);
+      marker(points, point, endpoint ? 'route-endpoint' : 'route-waypoint', endpoint ? 6 : 3.5);
     }
 
     readout.replaceChildren();
@@ -95,7 +118,28 @@ export function setupRouteMap(root, getRuns) {
     }
   }
 
-  select.addEventListener('change', draw);
+  function showMode(value) {
+    const isLocal = value === 'local';
+    if (mode !== value) viewport.reset();
+    mode = value;
+    find('route-local-mode').setAttribute('aria-pressed', isLocal);
+    find('route-fiber-mode').setAttribute('aria-pressed', !isLocal);
+    for (const id of ['route-local-controls', 'route-local-content', 'route-direct', 'route-model', 'route-points']) {
+      find(id).toggleAttribute('hidden', !isLocal);
+    }
+    for (const id of ['route-fiber-controls', 'route-fiber-content', 'fiber-paths', 'fiber-points']) {
+      find(id).toggleAttribute('hidden', isLocal);
+    }
+    if (isLocal) draw();
+    else fiberMap.draw();
+  }
+
+  find('route-local-mode').addEventListener('click', () => showMode('local'));
+  find('route-fiber-mode').addEventListener('click', () => showMode('fiber'));
+  select.addEventListener('change', () => {
+    viewport.reset();
+    draw();
+  });
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const fields = new FormData(form);
@@ -108,6 +152,7 @@ export function setupRouteMap(root, getRuns) {
     find('route-origin-note').textContent = origin.name + ' is used for the shortest-path reference. The candidate corridor still starts in the Ruhr region.';
     draw();
   });
-  draw();
+  const initial = new URLSearchParams(location.search).get('view');
+  showMode(initial === 'intercontinental' ? 'fiber' : 'local');
   return draw;
 }

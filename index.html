@@ -6,8 +6,8 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Measure and compare network paths with an auditable test history.">
 <title>Linkbench · Network measurements</title>
-<link rel="stylesheet" href="./style.css?v=routes-1">
-<script type="module" src="./app.js?v=routes-1"></script>
+<link rel="stylesheet" href="./style.css?v=fiber-1">
+<script type="module" src="./app.js?v=fiber-1"></script>
 </head>
 <body>
 <header class="top"><div class="wrap masthead"><a class="brand" href="./" aria-label="Linkbench home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span> Linkbench</a><nav aria-label="Page"><a href="#test">Speed test</a><a href="#history">History</a><a href="#route-map">Routes</a><a href="#method">Method</a></nav></div></header>
@@ -61,18 +61,39 @@
 </div>
 </section>
 <details class="panel route-panel" id="route-map">
-<summary><span>Explore network routes</span><small>Compare the shortest path with a plausible fiber corridor.</small></summary>
+<summary><span>Explore network routes</span><small>Compare network paths and explore intercontinental fiber corridors.</small></summary>
 <div class="route-content">
-<div class="route-controls">
+<div class="route-modes" role="group" aria-label="Map view">
+<button type="button" id="route-local-mode" aria-pressed="true">My connection</button>
+<button type="button" id="route-fiber-mode" aria-pressed="false">Intercontinental</button>
+</div>
+<div class="route-controls" id="route-local-controls">
 <label>Destination<select id="route-destination"><option value="fra04">Frankfurt</option><option value="lga05" selected>New York</option><option value="jnb01">Johannesburg</option><option value="sin01">Singapore</option><option value="syd03">Sydney</option></select></label>
 <p id="route-default"></p>
 </div>
-<svg id="route-map-image" viewBox="0 0 900 450" role="img" aria-label="World map of direct and candidate network routes">
+<div class="route-controls" id="route-fiber-controls" hidden>
+<label>Corridor<select id="fiber-corridor"></select></label>
+<p id="fiber-caption"></p>
+</div>
+<div class="map-frame">
+<svg id="route-map-image" viewBox="0 0 900 450" width="900" height="450" role="img" tabindex="0" aria-describedby="map-help" aria-label="World map of direct and candidate network routes">
 <image id="route-basemap" width="900" height="450"/>
+<image id="route-basemap-detail" width="900" height="450" hidden/>
 <path id="route-direct" class="route-direct"/>
 <path id="route-model" class="route-model"/>
+<g id="fiber-paths" hidden></g>
 <g id="route-points"></g>
+<g id="fiber-points" hidden></g>
 </svg>
+<div class="map-tools" role="group" aria-label="Map zoom">
+<button type="button" id="map-zoom-in" aria-label="Zoom in">+</button>
+<button type="button" id="map-zoom-out" aria-label="Zoom out">−</button>
+<button type="button" id="map-reset" aria-label="Reset to world view">World</button>
+<output id="map-zoom-value"></output>
+</div>
+</div>
+<p class="target-note map-help" id="map-help">Drag to pan. Pinch or use + and − to zoom. Arrow keys pan when the map has focus.</p>
+<div id="route-local-content">
 <div class="route-legend"><span><i></i>Shortest geographic path</span><span><i></i>Ruhr-origin corridor · unverified</span></div>
 <p class="route-waypoints" id="route-waypoints"></p>
 <div class="route-readings" id="route-readings" aria-live="polite"></div>
@@ -87,13 +108,48 @@
 <dt>How to check your route</dt><dd>Trace from your own device to the exact test server to see responding outward hops. M-Lab archives server-side traces that can be linked by connection UUID. A trace can support a metro or carrier inference, while fiber type, cable geometry and router model require operator evidence.</dd>
 </dl>
 <div class="route-sources" id="route-references"></div>
-<div class="route-sources"><a href="https://www.measurementlab.net/kb/core-service-traceroute/">M‑Lab traceroute</a><a href="https://github.com/m-lab/siteinfo">M‑Lab site locations</a><a href="https://www.itu.int/ITU-T/recommendations/rec.aspx?rec=16060">ITU‑T G.652</a><a href="https://www.itu.int/ITU-T/recommendations/rec.aspx?rec=16061">ITU‑T G.654</a><a href="https://www.naturalearthdata.com/">Natural Earth basemap</a></div>
+<div class="route-sources"><a href="https://www.measurementlab.net/kb/core-service-traceroute/">M‑Lab traceroute</a><a href="https://github.com/m-lab/siteinfo">M‑Lab site locations</a><a href="https://www.itu.int/ITU-T/recommendations/rec.aspx?rec=16060">ITU‑T G.652</a><a href="https://www.itu.int/ITU-T/recommendations/rec.aspx?rec=16061">ITU‑T G.654</a><a href="https://www.naturalearthdata.com/downloads/50m-physical-vectors/">Natural Earth basemap</a></div>
 <form id="route-origin">
 <div class="fields"><label>Approximate latitude<input type="number" name="latitude" min="-90" max="90" step="any" placeholder="51.35"></label><label>Approximate longitude<input type="number" name="longitude" min="-180" max="180" step="any" placeholder="7.24"></label></div>
 <button type="submit">Update map origin</button>
 <p id="route-origin-note" aria-live="polite">Starts at an approximate Ruhr-region point. Custom coordinates change the shortest-path reference and stay on this page.</p>
 </form>
 </details>
+</div>
+<div id="route-fiber-content" hidden>
+<div class="route-legend fiber-legend">
+<span class="fiber-cable-key"><i></i>Candidate cable · schematic</span>
+<span class="fiber-anchor-key"><i></i>Atlas anchor pair</span>
+<span class="fiber-tour-key" id="fiber-tour-key" hidden><i></i>Relay tour stop order</span>
+</div>
+<div id="fiber-places" class="fiber-places" role="group" aria-label="Zoom to a stop"></div>
+<div class="fiber-results" id="fiber-results">
+<div class="section-title fiber-heading"><h3>Between the two Atlas anchors</h3><button type="button" id="fiber-refresh">Load recent RTTs</button></div>
+<p id="fiber-status" class="target-note" role="status">Read public IPv4 ping records from the last six hours.</p>
+<div class="route-readings fiber-readings" id="fiber-readings"></div>
+</div>
+<details class="route-deep" id="fiber-more">
+<summary>Cable and measurement details</summary>
+<p id="fiber-detail"></p>
+<p>Each RTT uses one clock at the sending anchor. The two directions are separate ping series. Public routing may traverse other cables or take a detour. Traceroute can give routing clues. A carrier-confirmed circuit is needed to attribute a run to a specific cable.</p>
+<div class="route-sources" id="fiber-sources"></div>
+</details>
+<details class="route-deep" id="fiber-tour">
+<summary>Forward one payload through a relay tour</summary>
+<p>Use relays you control. The same tagged payload visits each stop and returns to the first relay. Linkbench shows the measured loop time and separate HTTPS echo RTTs for its legs.</p>
+<form id="fiber-tour-form">
+<div class="fields">
+<label>Tour<select name="profile" id="fiber-tour-profile"><option value="atlantic">Atlantic pilot</option><option value="world">World tour</option></select></label>
+<label>Entry relay origin<input name="entry" type="url" placeholder="https://relay.example.org" autocomplete="off" required></label>
+</div>
+<label>Entry run key<input name="key" type="password" autocomplete="off" required></label>
+<button type="submit" id="fiber-tour-start">Run relay tour</button>
+</form>
+<p id="fiber-tour-status" role="status"></p>
+<div class="table-scroll" id="fiber-tour-output" hidden><table><caption class="sr-only">Independent relay echo timings</caption><thead><tr><th scope="col">Leg</th><th scope="col">HTTPS echo RTT</th></tr></thead><tbody id="fiber-tour-rows"></tbody></table></div>
+<div class="route-sources"><a href="https://github.com/uwarring82/linkbench#relay-tour">Relay setup</a></div>
+</details>
+</div>
 </div>
 </details>
 <section class="method" id="method"><h2>Measurement method</h2>

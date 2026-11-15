@@ -42,3 +42,36 @@ The responder caps payload sizes and limits concurrent bulk requests. CORS check
 ## Pilot
 
 Use the same protocol on the Freiburg and control responders. Budget 214 MB per run plus overhead. The upload-loaded latency compares two runs to the same Freiburg responder with the same explicit block label, interface and VPN state. The comparison requires matching endpoint revisions and negotiated HTTP versions. Schedule six blocks across days and daytime/evening windows, alternate order, and use unique labels. The UI shows the paired deltas and evaluates the predeclared five-of-six rule. It cannot independently verify the VPN route, timing of your schedule, or which access point your device used.
+
+## Intercontinental map
+
+Open **Routes → Intercontinental**. Pick a corridor to highlight its illustrative cable and the two distinct Atlas anchors. Use **Load recent RTTs** for public RIPE Atlas IPv4 ICMP results in both directions. Each card reports the median over replies in a six-hour window, the reply count, and the latest reply time. Measurements originate at the anchors. The app reads existing records and spends no Atlas credits. Selecting another corridor clears the displayed results. Raw archives are identified by the source probe and destination measurement IDs in `corridors.js`.
+
+The cable lines and landing-area coordinates are schematic. A metro anchor can be well inland or on a different carrier. The Atlas pair line is a geographic reference. Neither the pair’s RTT nor a geographically plausible traceroute establishes which cable carried a probe. A carrier-confirmed circuit is required for cable-specific claims. The basemap uses Natural Earth public-domain land polygons, with the 1:50m layer loaded on zoom.
+
+## Relay tour
+
+Linkbench’s relay tour requires Node 22 or later and HTTPS origins for controlled relays at the selected stops. The Atlantic pilot uses Sines, Fortaleza, and Luanda. The world tour adds the remaining metro stops in `corridors.js`. A relay’s stop name describes its configured role. Choose a host physically in that metro to match the map. There are no default live relays.
+
+1. Use the same fixed origin map and relay key at every stop. Use a separate run key at the Sines entry; give that key only to intended users. Generate each key with `openssl rand -hex 32` and keep config files private.
+2. Run `node relay.mjs /path/to/private-relay-config.json` at each stop. Terminate HTTPS at a reverse proxy and forward `/tour/` to the loopback listener. Keep proxy timeouts above 35 seconds and send both the entry request and the returning hop to the same entry process. Preserve the authorization and Origin headers.
+3. Open **Intercontinental → Forward one payload through a relay tour**, then enter the Sines relay origin and run key. The browser uses the key for that request and never writes it to history or storage.
+
+Example config for the entry relay, with placeholder domains and keys. Copy it for the other two stops and change `stop`; omit `runKey` off the entry.
+
+```json
+{
+  "stop": "sines",
+  "port": 8790,
+  "frontendOrigin": "https://uwarring82.github.io",
+  "runKey": "replace-with-separate-entry-key",
+  "relayKey": "replace-with-shared-relay-key",
+  "nodes": {
+    "sines": "https://sines.example.org",
+    "fortaleza": "https://fortaleza.example.org",
+    "luanda": "https://luanda.example.org"
+  }
+}
+```
+
+The entry creates a 64-byte payload with a run ID. Relays forward it in HTTPS requests to fixed next-hop origins. The entry verifies that the exact payload returns, then reports elapsed time on its monotonic clock. Each leg is also timed with a separate same-clock HTTPS echo after the payload returns. Echo timings include HTTP and server overhead, and a failed echo is independently marked unavailable. They are round trips and are not summed into the actual forward loop time. The physical paths remain subject to carrier routing.

@@ -87,3 +87,35 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 #route-origin{margin-top:14px}
 #route-origin button{margin-top:8px}
 @media(max-width:580px){.route-controls{grid-template-columns:1fr;gap:6px}.route-readings{grid-template-columns:1fr}.route-readings strong{font-size:18px}nav{flex-wrap:wrap;justify-content:flex-end;row-gap:3px}}
+.route-modes{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.route-modes button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+.map-frame{position:relative}
+#route-map-image{height:auto;aspect-ratio:2;touch-action:none;cursor:grab;user-select:none;--marker-scale:1}
+#route-map-image.map-grabbing{cursor:grabbing}
+.map-tools{position:absolute;inset:8px 8px auto auto;display:flex;align-items:center;justify-content:flex-end;gap:3px;padding:3px;background:#11191e;border:1px solid var(--line);border-radius:7px}
+.map-tools button{min-width:38px;min-height:38px;padding:3px 7px}
+.map-tools output{display:inline-block;padding:0 5px;min-width:37px;color:var(--muted);font:12px var(--mono);text-align:center}
+.map-help{margin:7px 0 0}
+.map-marker{transform:scale(var(--marker-scale));pointer-events:none}
+.map-marker circle{vector-effect:non-scaling-stroke}
+.map-marker text{display:none;fill:var(--ink);stroke:#11191e;stroke-width:4;stroke-linejoin:round;paint-order:stroke fill;font:650 14px system-ui,sans-serif}
+.map-close .map-marker text{display:block}
+.fiber-path{stroke:#eeb96a;stroke-width:2;stroke-dasharray:5 5;opacity:.28}
+.fiber-path.is-selected{stroke-width:2.6;opacity:1}
+.fiber-atlas{stroke:#81d5f5;stroke-width:2;stroke-dasharray:2 5}
+.fiber-tour-path{stroke:#c3a7ff;stroke-width:2.8}
+.fiber-landing{fill:#eeb96a;stroke:#11191e;stroke-width:1.5}
+.fiber-anchor{fill:#81d5f5;stroke:#11191e;stroke-width:1.5}
+.fiber-tour-dot{fill:#c3a7ff;stroke:#11191e;stroke-width:1.5}
+.fiber-legend .fiber-cable-key i{border-color:#eeb96a}
+.fiber-legend .fiber-anchor-key i{border-color:#81d5f5;border-style:dotted}
+.fiber-legend .fiber-tour-key i{border-color:#c3a7ff;border-style:solid}
+.fiber-places{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 14px}
+.fiber-places button{font-size:12px;padding:6px 9px}
+.fiber-results{margin-top:12px}
+.fiber-heading{flex-wrap:wrap;margin-bottom:9px}
+.fiber-heading button,#fiber-tour-form button{font-size:13px}
+.fiber-readings{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:9px}
+#fiber-tour-form{display:grid;gap:8px;margin-top:12px}
+#fiber-tour-form button{justify-self:start}
+@media(max-width:580px){.fiber-readings{grid-template-columns:1fr}.map-tools button{min-width:34px;min-height:34px}.map-marker text{font-size:20px}}
