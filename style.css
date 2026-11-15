@@ -72,7 +72,7 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 .route-legend,.route-sources{display:flex;flex-wrap:wrap;gap:6px 20px;margin:10px 0}
 .route-legend span{display:flex;align-items:center;gap:7px;font-size:12px}
 .route-legend i{width:23px;border-top:2px dashed #d7e2e7}
-.route-legend span:nth-child(2) i{border-color:var(--accent);border-style:dotted}
+#route-local-content .route-legend span:nth-child(2) i{border-color:var(--accent);border-style:dotted}
 .route-waypoints{margin:8px 0 13px}
 .route-readings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}
 .route-readings div{padding:8px 10px;border:1px solid var(--line);border-radius:6px}
@@ -119,3 +119,5 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 #fiber-tour-form{display:grid;gap:8px;margin-top:12px}
 #fiber-tour-form button{justify-self:start}
 @media(max-width:580px){.fiber-readings{grid-template-columns:1fr}.map-tools button{min-width:34px;min-height:34px}.map-marker text{font-size:20px}}
+
+@media(min-width:581px){#route-fiber-controls{grid-template-columns:minmax(225px,350px) 1fr}}

@@ -8,7 +8,13 @@ export function setupMapViewport(svg, controls) {
   let x = 0;
   let y = 0;
   const pointers = new Map();
+  const overview = svg.querySelector('#route-basemap');
   const detail = svg.querySelector('#route-basemap-detail');
+  let detailReady = false;
+  detail.addEventListener('load', () => {
+    detailReady = true;
+    render();
+  });
 
   function render() {
     x = clamp(x, 0, width - width / zoom);
@@ -17,6 +23,7 @@ export function setupMapViewport(svg, controls) {
     svg.style.setProperty('--marker-scale', 1 / zoom);
     svg.classList.toggle('map-close', zoom >= 3);
     if (zoom >= 3 && !detail.hasAttribute('href')) detail.setAttribute('href', './route-land-detail.svg?v=1');
+    overview.toggleAttribute('hidden', zoom >= 3 && detailReady);
     detail.toggleAttribute('hidden', zoom < 3);
     controls.value.textContent = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(zoom) + '×';
     controls.in.disabled = zoom >= maxZoom;

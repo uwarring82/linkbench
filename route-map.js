@@ -1,6 +1,6 @@
 import { defaultOrigin, distanceKm, estimateRoute, fiberRttMs, mapPath, mapPoint, routeModels } from './routes.js?v=1';
 
-import { setupMapViewport } from './map-viewport.js?v=1';
+import { setupMapViewport } from './map-viewport.js?v=2';
 import { setupFiberMap } from './fiber-map.js?v=1';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
