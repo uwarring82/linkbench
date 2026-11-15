@@ -1,8 +1,9 @@
-import { defaultOrigin, distanceKm, estimateRoute, fiberRttMs, mapPath, mapPoint, routeModels } from './routes.js?v=2';
+import { defaultOrigin, distanceKm, estimateRoute, fiberRttMs, mapPath, mapPoint, mapPolyline, routeModels } from './routes.js?v=2';
 
-import { setupMapViewport } from './map-viewport.js?v=3';
-import { setupFiberMap } from './fiber-map.js?v=3';
-import { setupInfrastructureMap } from './infrastructure-map.js?v=1';
+import { setupAtlas } from './atlas-view.js?v=1';
+import { setupMapViewport } from './map-viewport.js?v=4';
+import { setupFiberMap } from './fiber-map.js?v=4';
+import { setupInfrastructureMap } from './infrastructure-map.js?v=2';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const integer = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
@@ -51,11 +52,24 @@ export function setupRouteMap(root, getRuns) {
   let origin = defaultOrigin;
   let mode = 'local';
   const svg = find('route-map-image');
-  const viewport = setupMapViewport(svg, {
+  const controls = {
     in: find('map-zoom-in'), out: find('map-zoom-out'),
     reset: find('map-reset'), value: find('map-zoom-value'),
-  });
-  const viewTools = { makeSvg, marker, addText, formatKm, formatMs };
+  };
+  const viewport = setupAtlas(find, svg, setupMapViewport(svg, controls), controls);
+
+  function plotLine(element, segments, name, schematic = false) {
+    element.setAttribute('d', segments.map(schematic ? mapPolyline : mapPath).join(''));
+    viewport.track(element, { type: 'MultiLineString', coordinates: segments, name });
+  }
+
+  function plotMarker(parent, point, className, radius, labelSide) {
+    const element = marker(parent, point, className, radius, labelSide);
+    viewport.track(element, { type: 'Point', coordinates: point.coords, name: point.name, radius });
+    return element;
+  }
+
+  const viewTools = { makeSvg, marker: plotMarker, plotLine, track: viewport.track, addText, formatKm, formatMs };
   const fiberMap = setupFiberMap(find, svg, viewport, viewTools);
   const infrastructureMap = setupInfrastructureMap(find, svg, viewport, viewTools);
   find('route-basemap').setAttribute('href', './route-land.svg');
@@ -75,15 +89,15 @@ export function setupRouteMap(root, getRuns) {
     const measured = rtts.length ? Math.min(...rtts) : null;
 
     find('route-default').textContent = model.summary;
-    find('route-direct').setAttribute('d', mapPath([origin.coords, destination.coords]));
-    find('route-model').setAttribute('d', mapPath(waypoints.map((point) => point.coords)));
+    plotLine(find('route-direct'), [[origin.coords, destination.coords]], 'Shortest geographic path');
+    plotLine(find('route-model'), [waypoints.map((point) => point.coords)], 'Candidate Ruhr-origin corridor');
     find('route-map-image').setAttribute('aria-label', 'World map from ' + origin.name + ' to ' + destination.name +
       '. The Ruhr-region candidate corridor passes through ' + waypoints.slice(1, -1).map((point) => point.name).join(', ') + '.');
     points.replaceChildren();
     const mapPoints = origin === defaultOrigin ? waypoints : [...waypoints, origin];
     for (const point of mapPoints) {
       const endpoint = [defaultOrigin, destination, origin].includes(point);
-      marker(points, point, endpoint ? 'route-endpoint' : 'route-waypoint', endpoint ? 6 : 3.5);
+      plotMarker(points, point, endpoint ? 'route-endpoint' : 'route-waypoint', endpoint ? 6 : 3.5);
     }
 
     readout.replaceChildren();
@@ -125,6 +139,7 @@ export function setupRouteMap(root, getRuns) {
   function showMode(value) {
     if (mode !== value) viewport.reset();
     mode = value;
+    viewport.setLayer(mode);
     for (const [name, ids] of Object.entries({
       local: ['route-local-controls', 'route-local-content', 'route-direct', 'route-model', 'route-points'],
       fiber: ['route-fiber-controls', 'route-fiber-content', 'fiber-paths', 'fiber-points',
@@ -159,7 +174,11 @@ export function setupRouteMap(root, getRuns) {
     find('route-origin-note').textContent = origin.name + ' is used for the shortest-path reference. The candidate corridor still starts in the Ruhr region.';
     draw();
   });
-  const initial = new URLSearchParams(location.search).get('view');
-  showMode(({ intercontinental: 'fiber', infrastructure: 'infrastructure' })[initial] ?? 'local');
+  const params = new URLSearchParams(location.search);
+  const projection = params.get('atlas');
+  const wantsAtlas = projection === '2d' || projection === '3d';
+  const views = new Map([['connection', 'local'], ['intercontinental', 'fiber'], ['infrastructure', 'infrastructure']]);
+  showMode(views.get(params.get('view')) ?? (wantsAtlas ? 'infrastructure' : 'local'));
+  if (wantsAtlas) viewport.open(projection);
   return draw;
 }

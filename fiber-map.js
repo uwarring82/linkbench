@@ -1,6 +1,6 @@
 import { atlasStops, corridors, tours } from './corridors.js?v=2';
-import { distanceKm, mapPath, mapPoint } from './routes.js?v=2';
-import { setupAtlasTrace } from './atlas-trace.js?v=1';
+import { distanceKm } from './routes.js?v=2';
+import { setupAtlasTrace } from './atlas-trace.js?v=2';
 
 const atlas = 'https://atlas.ripe.net';
 const sampleAgeSeconds = 6 * 60 * 60;
@@ -31,7 +31,7 @@ async function atlasRtt(from, to, start, stop, signal) {
   return { median, replies: times.length, attempts, last };
 }
 
-export function setupFiberMap(find, svg, viewport, { makeSvg, marker, addText, formatKm, formatMs }) {
+export function setupFiberMap(find, svg, viewport, { makeSvg, marker, plotLine, track, addText, formatKm, formatMs }) {
   const select = find('fiber-corridor');
   const places = find('fiber-places');
   const status = find('fiber-status');
@@ -44,7 +44,7 @@ export function setupFiberMap(find, svg, viewport, { makeSvg, marker, addText, f
   const tourForm = find('fiber-tour-form');
   const tourStatus = find('fiber-tour-status');
   const tourButton = find('fiber-tour-start');
-  const traceroute = setupAtlasTrace(find, viewport, { makeSvg, addText, formatMs });
+  const traceroute = setupAtlasTrace(find, viewport, { makeSvg, plotLine, track, addText, formatMs });
   function setTracePair() {
     const { from, to } = corridors[select.value];
     traceroute.setPair(atlasStops[from], atlasStops[to]);
@@ -59,15 +59,17 @@ export function setupFiberMap(find, svg, viewport, { makeSvg, marker, addText, f
   select.value = 'sacs';
   setTracePair();
 
-  function path(corners, className) {
-    paths.append(makeSvg('path', { class: className, d: mapPath(corners) }));
+  function path(corners, className, name) {
+    const element = makeSvg('path', { class: className });
+    plotLine(element, [corners], name);
+    paths.append(element);
   }
 
   function place(point) {
     const button = addText(places, 'button', point.name);
     button.type = 'button';
     button.setAttribute('aria-label', 'Zoom to ' + point.name);
-    button.addEventListener('click', () => viewport.focus(mapPoint(point.coords)));
+    button.addEventListener('click', () => viewport.focus(point.coords));
   }
 
   function draw() {
@@ -83,14 +85,14 @@ export function setupFiberMap(find, svg, viewport, { makeSvg, marker, addText, f
     places.replaceChildren();
     const cableCoords = ({ landings: [left, right], via }) => [left.coords, ...via, right.coords];
     for (const entry of Object.values(corridors)) {
-      if (entry !== corridor) path(cableCoords(entry), 'fiber-path');
+      if (entry !== corridor) path(cableCoords(entry), 'fiber-path', entry.cable);
     }
-    path(cableCoords(corridor), 'fiber-path is-selected');
-    path([a.coords, b.coords], 'fiber-atlas');
+    path(cableCoords(corridor), 'fiber-path is-selected', corridor.cable + ' · schematic');
+    path([a.coords, b.coords], 'fiber-atlas', 'Atlas anchor pair');
     find('fiber-tour-key').hidden = !tourDetails.open;
     if (tourDetails.open) {
       const travel = tours[tourProfile.value].map((stop) => atlasStops[stop]);
-      path(travel.map((stop) => stop.coords), 'fiber-tour-path');
+      path(travel.map((stop) => stop.coords), 'fiber-tour-path', 'Relay tour stop order');
       for (const stop of new Set(travel)) marker(points, stop, 'fiber-tour-dot', 4);
       if (!tourStarted) tourStatus.textContent = travel.map((stop) => stop.name).join(' → ');
     }
@@ -129,6 +131,7 @@ export function setupFiberMap(find, svg, viewport, { makeSvg, marker, addText, f
     status.textContent = 'Read public IPv4 ping records from the last six hours.';
     refresh.disabled = false;
     viewport.reset();
+    viewport.reveal(atlasStops[corridors[select.value].from].coords);
     draw();
   });
 

@@ -1,4 +1,4 @@
-import { mapPath, mapPoint } from './routes.js?v=2';
+import { mapPoint } from './routes.js?v=2';
 
 function observedHops(trace) {
   return trace.result.filter((record) => Number.isInteger(record.hop) && record.hop > 0).map((record) => {
@@ -21,7 +21,7 @@ function publicAddress(ip) {
     !(a === 172 && b >= 16 && b <= 31) && !(a === 192 && b === 168) && !(a === 198 && (b === 18 || b === 19));
 }
 
-export function setupAtlasTrace(find, viewport, { makeSvg, addText, formatMs }) {
+export function setupAtlasTrace(find, viewport, { makeSvg, plotLine, track, addText, formatMs }) {
   const direction = find('fiber-trace-direction');
   const load = find('fiber-trace-load');
   const status = find('fiber-trace-status');
@@ -51,7 +51,7 @@ export function setupAtlasTrace(find, viewport, { makeSvg, addText, formatMs }) 
     rows.querySelector('.is-active')?.classList.remove('is-active');
     group.classList.add('is-active');
     details.classList.add('is-active');
-    viewport.focus(mapPoint(coords));
+    viewport.focus(coords);
   }
 
   function drawHops(hops) {
@@ -88,6 +88,8 @@ export function setupAtlasTrace(find, viewport, { makeSvg, addText, formatMs }) 
         const label = makeSvg('text', { x: cx, y: cy, dy: '.35em', 'text-anchor': 'middle' });
         label.textContent = number;
         dot.append(label);
+        track(group, { type: 'Point', coordinates: coords, name: 'Hop ' + number + ' · ' + name,
+          label: String(number), radius: 7, offset: [cx, cy] });
         group.append(dot);
         points.append(group);
         const button = addText(cell, 'button', name);
@@ -96,8 +98,10 @@ export function setupAtlasTrace(find, viewport, { makeSvg, addText, formatMs }) 
         function selectPoint() {
           reveal(row, group, coords);
           find('fiber-trace').open = true;
-          button.focus({ preventScroll: true });
-          button.scrollIntoView({ block: 'nearest' });
+          requestAnimationFrame(() => {
+            button.focus({ preventScroll: true });
+            button.scrollIntoView({ block: 'nearest' });
+          });
         }
         group.addEventListener('click', selectPoint);
         group.addEventListener('keydown', (event) => {
@@ -109,7 +113,9 @@ export function setupAtlasTrace(find, viewport, { makeSvg, addText, formatMs }) 
       }
       const current = replies.size === 1 && plotted.length === 1 ? plotted[0] : null;
       if (current && previous?.number === number - 1) {
-        lines.append(makeSvg('path', { class: 'trace-path', d: mapPath([previous.coords, current]) }));
+        const line = makeSvg('path', { class: 'trace-path' });
+        plotLine(line, [[previous.coords, current]], 'Between estimated hop locations');
+        lines.append(line);
       }
       previous = current ? { number, coords: current } : null;
     }

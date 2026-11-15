@@ -335,7 +335,7 @@ async function openRouteMap() {
   if (refreshRouteMap || routeLoading) return;
   routeLoading = true;
   try {
-    const { setupRouteMap } = await import('./route-map.js?v=network-1');
+    const { setupRouteMap } = await import('./route-map.js?v=atlas-1');
     refreshRouteMap = setupRouteMap(routeMap, () => runs);
   } catch {
     id('route-default').textContent = 'The route map could not load. Collapse it and reopen to retry.';
@@ -345,4 +345,6 @@ async function openRouteMap() {
 }
 routeMap.addEventListener('toggle', () => { if (routeMap.open) openRouteMap(); });
 document.querySelector('nav a[href="#route-map"]').addEventListener('click', openRouteMap);
-if (location.hash === '#route-map' || new URLSearchParams(location.search).get('view') === 'infrastructure') openRouteMap();
+const routeParams = new URLSearchParams(location.search);
+if (location.hash === '#route-map' || routeParams.get('view') === 'infrastructure' ||
+    ['2d', '3d'].includes(routeParams.get('atlas'))) openRouteMap();

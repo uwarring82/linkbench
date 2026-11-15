@@ -83,3 +83,9 @@ Open **Routes → Infrastructure & traffic** for the 2022 TeleGeography snapshot
 **View recent traffic** loads the NetSage dashboard for participating Atlantic research circuits. Select an exchange to view an operator-published traffic chart or open the operator’s own dashboard. The chart scope is the circuit or exchange indicated by the provider. The cable layer has no utilization estimates.
 
 In **Intercontinental → Inspect traceroute hops**, choose an Atlas direction and load the most recent archived ICMP trace. The table gives the minimum RTT for each responding IP at each hop with an estimated city when RIPE IPmap can supply one. Select a city to zoom to the marker. Dashed pink lines connect consecutive hops with a single mapped reply each. They describe the sequence of estimated cities. The selected candidate cable is independent of the trace.
+
+### Full-screen network atlas
+
+Use **Atlas** in the header or **Open full-screen atlas** in Routes. The same map layers and selections work in **2D map** and **3D globe**. On narrow screens, **Layers & details** opens the controls and measurement panel. Drag or use the arrow keys to pan or rotate. Use pinch, the zoom buttons, or the plus and minus keys to zoom. **World** resets the view and Escape closes the atlas. The address bar preserves the selected view and projection for sharing.
+
+The globe uses an orthographic projection with the far hemisphere clipped. It loads its Natural Earth basemap and projection code on demand. Archive cable geometries and the existing distinctions between illustrative links, estimated hops and measurements are shared with the flat map. Globe dependencies and source notices are in `vendor/atlas-LICENSES.txt`.

@@ -6,11 +6,11 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Measure and compare network paths with an auditable test history.">
 <title>Linkbench · Network measurements</title>
-<link rel="stylesheet" href="./style.css?v=network-1">
-<script type="module" src="./app.js?v=network-1"></script>
+<link rel="stylesheet" href="./style.css?v=atlas-1">
+<script type="module" src="./app.js?v=atlas-1"></script>
 </head>
 <body>
-<header class="top"><div class="wrap masthead"><a class="brand" href="./" aria-label="Linkbench home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span> Linkbench</a><nav aria-label="Page"><a href="#test">Speed test</a><a href="#history">History</a><a href="#route-map">Routes</a><a href="#method">Method</a></nav></div></header>
+<header class="top"><div class="wrap masthead"><a class="brand" href="./" aria-label="Linkbench home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span> Linkbench</a><nav aria-label="Page"><a href="#test">Speed test</a><a href="#history">History</a><a href="#route-map">Routes</a><a href="?atlas=2d">Atlas</a><a href="#method">Method</a></nav></div></header>
 <main class="wrap">
 <section class="intro" id="test"><h1>Measure your<br>connection<span>.</span></h1><p>Test the path to a server. Compare the results across Wi-Fi, Ethernet, DSL, and cellular.</p></section>
 <div class="workbench">
@@ -62,11 +62,14 @@
 </section>
 <details class="panel route-panel" id="route-map">
 <summary><span>Explore network routes</span><small>Compare network paths and explore intercontinental fiber corridors.</small></summary>
-<div class="route-content">
-<div class="route-modes" role="group" aria-label="Map view">
+<div class="route-content" id="route-content">
+<div class="route-sidebar" id="atlas-sidebar">
+<div class="route-settings">
+<div class="route-modes" role="group" aria-label="Map layers">
 <button type="button" id="route-local-mode" aria-pressed="true">My connection</button>
 <button type="button" id="route-fiber-mode" aria-pressed="false">Intercontinental</button>
 <button type="button" id="route-infrastructure-mode" aria-pressed="false">Infrastructure &amp; traffic</button>
+<button type="button" class="atlas-launch" id="atlas-launch" aria-haspopup="dialog">Open full-screen atlas <span aria-hidden="true">⤢</span></button>
 </div>
 <div class="route-controls" id="route-local-controls">
 <label>Destination<select id="route-destination"><option value="fra04">Frankfurt</option><option value="lga05" selected>New York</option><option value="jnb01">Johannesburg</option><option value="sin01">Singapore</option><option value="syd03">Sydney</option></select></label>
@@ -80,28 +83,8 @@
 <label>Submarine system<select id="infrastructure-cable"><option value="">All submarine systems</option></select></label>
 <label>Internet exchange<select id="infrastructure-exchange"></select></label>
 </div>
-<div class="map-frame">
-<svg id="route-map-image" viewBox="0 0 900 450" width="900" height="450" role="group" tabindex="0" aria-describedby="map-help" aria-label="World map of direct and candidate network routes">
-<image id="route-basemap" width="900" height="450"/>
-<image id="route-basemap-detail" width="900" height="450" hidden/>
-<path id="route-direct" class="route-direct"/>
-<path id="route-model" class="route-model"/>
-<g id="infrastructure-cables" hidden></g>
-<g id="fiber-paths" hidden></g>
-<g id="fiber-trace-lines" hidden></g>
-<g id="infrastructure-points" hidden></g>
-<g id="route-points"></g>
-<g id="fiber-points" hidden></g>
-<g id="fiber-trace-points" hidden></g>
-</svg>
-<div class="map-tools" role="group" aria-label="Map zoom">
-<button type="button" id="map-zoom-in" aria-label="Zoom in">+</button>
-<button type="button" id="map-zoom-out" aria-label="Zoom out">−</button>
-<button type="button" id="map-reset" aria-label="Reset to world view">World</button>
-<output id="map-zoom-value"></output>
 </div>
-</div>
-<p class="target-note map-help" id="map-help">Drag to pan. Pinch or use + and − to zoom. Arrow keys pan when the map has focus.</p>
+<div class="route-inspect">
 <div id="route-local-content">
 <div class="route-legend"><span><i></i>Shortest geographic path</span><span><i></i>Ruhr-origin corridor · unverified</span></div>
 <p class="route-waypoints" id="route-waypoints"></p>
@@ -186,6 +169,47 @@
 </details>
 </div>
 </div>
+</div>
+<div class="atlas-stage">
+<div class="map-frame" id="atlas-map-frame">
+<svg id="route-map-image" viewBox="0 0 900 450" width="900" height="450" role="group" tabindex="0" aria-describedby="map-help" aria-label="World map of direct and candidate network routes">
+<image id="route-basemap" width="900" height="450"/>
+<image id="route-basemap-detail" width="900" height="450" hidden/>
+<path id="route-direct" class="route-direct"/>
+<path id="route-model" class="route-model"/>
+<g id="infrastructure-cables" hidden></g>
+<g id="fiber-paths" hidden></g>
+<g id="fiber-trace-lines" hidden></g>
+<g id="infrastructure-points" hidden></g>
+<g id="route-points"></g>
+<g id="fiber-points" hidden></g>
+<g id="fiber-trace-points" hidden></g>
+</svg>
+<canvas id="atlas-globe" role="img" tabindex="0" aria-describedby="map-help" aria-label="Interactive world globe" hidden></canvas>
+<p id="atlas-globe-status" class="target-note" role="status" hidden></p>
+<div class="map-tools" role="group" aria-label="Map zoom">
+<button type="button" id="map-zoom-in" aria-label="Zoom in">+</button>
+<button type="button" id="map-zoom-out" aria-label="Zoom out">−</button>
+<button type="button" id="map-reset" aria-label="Reset to world view">World</button>
+<output id="map-zoom-value"></output>
+</div>
+</div>
+<p class="target-note map-help" id="map-help">Drag to pan. Pinch or use + and − to zoom. Arrow keys pan when the map has focus.</p>
+</div>
+</div>
+<dialog id="atlas-dialog" aria-labelledby="atlas-title">
+<header class="atlas-top">
+<h2 id="atlas-title">Network atlas</h2>
+<div class="atlas-projections" role="group" aria-label="Map projection">
+<button type="button" id="atlas-flat" aria-pressed="true">2D map</button>
+<button type="button" id="atlas-sphere" aria-pressed="false">3D globe</button>
+</div>
+<div class="atlas-actions">
+<button type="button" id="atlas-details" aria-expanded="false" aria-controls="atlas-sidebar">Layers &amp; details</button>
+<button type="button" id="atlas-close" aria-label="Close atlas"><span class="atlas-close-label">Close</span><span aria-hidden="true">×</span></button>
+</div>
+</header>
+</dialog>
 </details>
 <section class="method" id="method"><h2>Measurement method</h2>
 <details><summary>What the numbers mean</summary><p>Goodput counts application payload bytes over the browser’s elapsed request time. Idle and loaded latency measure small HTTPS requests. A result describes the full path to the selected target and includes browser and server overhead.</p></details>

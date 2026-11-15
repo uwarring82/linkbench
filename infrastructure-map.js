@@ -1,5 +1,3 @@
-import { mapPoint, mapPolyline } from './routes.js?v=2';
-
 const archive = 'https://raw.githubusercontent.com/stevesong/open_undersea_cable_map/' +
   'e7903491e73bcac0d0b013b945897d10928483c4/';
 const netsage = 'https://ana.netsage.global/grafana/d/000000003/bandwidth-dashboard';
@@ -35,7 +33,7 @@ async function readArchive(path, signal = AbortSignal.timeout(15000)) {
   return response.json();
 }
 
-export function setupInfrastructureMap(find, svg, viewport, { makeSvg, marker, addText }) {
+export function setupInfrastructureMap(find, svg, viewport, { makeSvg, marker, plotLine, addText }) {
   const cables = find('infrastructure-cable');
   const exchangesSelect = find('infrastructure-exchange');
   const cableLayer = find('infrastructure-cables');
@@ -47,6 +45,7 @@ export function setupInfrastructureMap(find, svg, viewport, { makeSvg, marker, a
   const sources = find('traffic-sources');
   const reading = find('traffic-reading');
   const cablePaths = new Map();
+  const cableCenters = new Map();
   const landingLayer = makeSvg('g', {});
   const exchangeLayer = makeSvg('g', {});
   points.append(landingLayer, exchangeLayer);
@@ -69,7 +68,7 @@ export function setupInfrastructureMap(find, svg, viewport, { makeSvg, marker, a
 
   function chooseTraffic() {
     const exchange = exchanges[exchangesSelect.value];
-    if (exchange) viewport.focus(mapPoint(exchange.coords));
+    if (exchange) viewport.focus(exchange.coords);
     else viewport.reset();
     traffic.open = true;
     showTraffic();
@@ -159,15 +158,17 @@ export function setupInfrastructureMap(find, svg, viewport, { makeSvg, marker, a
         const { id, name } = properties;
         if (!/^[a-z0-9-]+$/.test(id) || typeof name !== 'string') continue;
         const segments = geometry.type === 'LineString' ? [geometry.coordinates] : geometry.coordinates;
-        const entry = systems.get(id) ?? { name, paths: [] };
-        entry.paths.push(...segments.map(mapPolyline));
+        const entry = systems.get(id) ?? { name, center: properties.coordinates, segments: [] };
+        entry.segments.push(...segments);
         systems.set(id, entry);
       }
       for (const [id, entry] of [...systems].sort(([, a], [, b]) => a.name.localeCompare(b.name))) {
         addText(cables, 'option', entry.name).value = id;
         const line = makeSvg('path', {
-          class: 'infrastructure-cable', d: entry.paths.join(''), 'data-map-action': '', 'aria-hidden': 'true',
+          class: 'infrastructure-cable', 'data-map-action': '', 'aria-hidden': 'true',
         });
+        plotLine(line, entry.segments, entry.name, true);
+        if (entry.center?.length === 2 && entry.center.every(Number.isFinite)) cableCenters.set(id, entry.center);
         const title = makeSvg('title', {});
         title.textContent = entry.name;
         line.append(title);
@@ -186,7 +187,11 @@ export function setupInfrastructureMap(find, svg, viewport, { makeSvg, marker, a
     }
   }
 
-  cables.addEventListener('change', updateCable);
+  cables.addEventListener('change', () => {
+    const center = cableCenters.get(cables.value);
+    if (center) viewport.reveal(center);
+    updateCable();
+  });
   exchangesSelect.addEventListener('change', chooseTraffic);
   traffic.addEventListener('toggle', () => {
     if (traffic.open && !reading.hasChildNodes()) showTraffic();

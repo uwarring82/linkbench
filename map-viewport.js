@@ -2,44 +2,61 @@ const width = 900;
 const height = 450;
 const maxZoom = 64;
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
+const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 
 export function setupMapViewport(svg, controls) {
   let zoom = 1;
-  let x = 0;
-  let y = 0;
+  let cx = width / 2;
+  let cy = height / 2;
+  let frameWidth = width;
+  let frameHeight = height;
+  let active = true;
+  let detailReady = false;
   const pointers = new Map();
   const overview = svg.querySelector('#route-basemap');
   const detail = svg.querySelector('#route-basemap-detail');
-  let detailReady = false;
   detail.addEventListener('load', () => {
     detailReady = true;
     render();
   });
 
   function render() {
-    x = clamp(x, 0, width - width / zoom);
-    y = clamp(y, 0, height - height / zoom);
-    svg.setAttribute('viewBox', [x, y, width / zoom, height / zoom].join(' '));
+    const w = frameWidth / zoom;
+    const h = frameHeight / zoom;
+    cx = w >= width ? width / 2 : clamp(cx, w / 2, width - w / 2);
+    cy = h >= height ? height / 2 : clamp(cy, h / 2, height - h / 2);
+    svg.setAttribute('viewBox', [cx - w / 2, cy - h / 2, w, h].join(' '));
     svg.style.setProperty('--marker-scale', 1 / zoom);
     svg.classList.toggle('map-close', zoom >= 3);
     if (zoom >= 3 && !detail.hasAttribute('href')) detail.setAttribute('href', './route-land-detail.svg?v=1');
     overview.toggleAttribute('hidden', zoom >= 3 && detailReady);
     detail.toggleAttribute('hidden', zoom < 3);
-    controls.value.textContent = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(zoom) + '×';
+    if (!active) return;
+    controls.value.textContent = number.format(zoom) + '×';
     controls.in.disabled = zoom >= maxZoom;
     controls.out.disabled = zoom <= 1;
     controls.reset.disabled = zoom <= 1;
   }
 
+  function resize() {
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    frameWidth = Math.max(width, height * rect.width / rect.height);
+    frameHeight = Math.max(height, width * rect.height / rect.width);
+    render();
+  }
+
   function reset() {
     zoom = 1;
+    cx = width / 2;
+    cy = height / 2;
     render();
   }
 
   function transform(factor, [fromX, fromY] = [0.5, 0.5], [toX, toY] = [fromX, fromY]) {
     const next = clamp(zoom * factor, 1, maxZoom);
-    x += fromX * width / zoom - toX * width / next;
-    y += fromY * height / zoom - toY * height / next;
+    cx += (fromX - 0.5) * frameWidth / zoom - (toX - 0.5) * frameWidth / next;
+    cy += (fromY - 0.5) * frameHeight / zoom - (toY - 0.5) * frameHeight / next;
     zoom = next;
     render();
   }
@@ -53,12 +70,13 @@ export function setupMapViewport(svg, controls) {
     const [a, b] = pointers.values();
     if (!b) return { center: a, distance: 0 };
     return { center: a.map((value, i) => (value + b[i]) / 2),
-      distance: Math.hypot((a[0] - b[0]) * width, (a[1] - b[1]) * height) };
+      distance: Math.hypot((a[0] - b[0]) * frameWidth, (a[1] - b[1]) * frameHeight) };
   }
 
-  controls.in.addEventListener('click', () => transform(1.6));
-  controls.out.addEventListener('click', () => transform(1 / 1.6));
-  controls.reset.addEventListener('click', reset);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(resize).observe(svg);
+  controls.in.addEventListener('click', () => { if (active) transform(1.6); });
+  controls.out.addEventListener('click', () => { if (active) transform(1 / 1.6); });
+  controls.reset.addEventListener('click', () => { if (active) reset(); });
   svg.addEventListener('wheel', (event) => {
     if (!event.ctrlKey && !event.metaKey) return;
     event.preventDefault();
@@ -98,10 +116,16 @@ export function setupMapViewport(svg, controls) {
   render();
   return {
     reset,
-    focus([pointX, pointY]) {
+    setActive(value) {
+      active = value;
+      if (active) {
+        resize();
+        render();
+      }
+    },
+    focus(point) {
       zoom = zoom >= 8 ? zoom : 12;
-      x = pointX - width / zoom / 2;
-      y = pointY - height / zoom / 2;
+      [cx, cy] = point;
       render();
     },
   };
