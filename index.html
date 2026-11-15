@@ -6,8 +6,8 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Measure and compare network paths with an auditable test history.">
 <title>Linkbench · Network measurements</title>
-<link rel="stylesheet" href="./style.css?v=fiber-2">
-<script type="module" src="./app.js?v=fiber-3"></script>
+<link rel="stylesheet" href="./style.css?v=network-1">
+<script type="module" src="./app.js?v=network-1"></script>
 </head>
 <body>
 <header class="top"><div class="wrap masthead"><a class="brand" href="./" aria-label="Linkbench home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span> Linkbench</a><nav aria-label="Page"><a href="#test">Speed test</a><a href="#history">History</a><a href="#route-map">Routes</a><a href="#method">Method</a></nav></div></header>
@@ -66,6 +66,7 @@
 <div class="route-modes" role="group" aria-label="Map view">
 <button type="button" id="route-local-mode" aria-pressed="true">My connection</button>
 <button type="button" id="route-fiber-mode" aria-pressed="false">Intercontinental</button>
+<button type="button" id="route-infrastructure-mode" aria-pressed="false">Infrastructure &amp; traffic</button>
 </div>
 <div class="route-controls" id="route-local-controls">
 <label>Destination<select id="route-destination"><option value="fra04">Frankfurt</option><option value="lga05" selected>New York</option><option value="jnb01">Johannesburg</option><option value="sin01">Singapore</option><option value="syd03">Sydney</option></select></label>
@@ -75,15 +76,23 @@
 <label>Corridor<select id="fiber-corridor"></select></label>
 <p id="fiber-caption"></p>
 </div>
+<div class="route-controls" id="route-infrastructure-controls" hidden>
+<label>Submarine system<select id="infrastructure-cable"><option value="">All submarine systems</option></select></label>
+<label>Internet exchange<select id="infrastructure-exchange"></select></label>
+</div>
 <div class="map-frame">
-<svg id="route-map-image" viewBox="0 0 900 450" width="900" height="450" role="img" tabindex="0" aria-describedby="map-help" aria-label="World map of direct and candidate network routes">
+<svg id="route-map-image" viewBox="0 0 900 450" width="900" height="450" role="group" tabindex="0" aria-describedby="map-help" aria-label="World map of direct and candidate network routes">
 <image id="route-basemap" width="900" height="450"/>
 <image id="route-basemap-detail" width="900" height="450" hidden/>
 <path id="route-direct" class="route-direct"/>
 <path id="route-model" class="route-model"/>
+<g id="infrastructure-cables" hidden></g>
 <g id="fiber-paths" hidden></g>
+<g id="fiber-trace-lines" hidden></g>
+<g id="infrastructure-points" hidden></g>
 <g id="route-points"></g>
 <g id="fiber-points" hidden></g>
+<g id="fiber-trace-points" hidden></g>
 </svg>
 <div class="map-tools" role="group" aria-label="Map zoom">
 <button type="button" id="map-zoom-in" aria-label="Zoom in">+</button>
@@ -121,6 +130,7 @@
 <span class="fiber-cable-key"><i></i>Candidate cable · schematic</span>
 <span class="fiber-anchor-key"><i></i>Atlas anchor pair</span>
 <span class="fiber-tour-key" id="fiber-tour-key" hidden><i></i>Relay tour stop order</span>
+<span class="fiber-trace-key" id="fiber-trace-key" hidden><i></i>Estimated hop locations</span>
 </div>
 <div id="fiber-places" class="fiber-places" role="group" aria-label="Zoom to a stop"></div>
 <div class="fiber-results" id="fiber-results">
@@ -128,6 +138,19 @@
 <p id="fiber-status" class="target-note" role="status">Read public IPv4 ping records from the last six hours.</p>
 <div class="route-readings fiber-readings" id="fiber-readings"></div>
 </div>
+<details class="route-deep" id="fiber-trace">
+<summary>Inspect traceroute hops</summary>
+<p>Read the latest public IPv4 trace between these Atlas anchors. Hop RTT includes the reply path. Map markers use estimated cities for selected replies.</p>
+<div class="route-controls">
+<label>Direction<select id="fiber-trace-direction"></select></label>
+<button type="button" id="fiber-trace-load">Load latest trace</button>
+</div>
+<p class="target-note" id="fiber-trace-status" role="status"></p>
+<div class="table-scroll" id="fiber-trace-output" hidden>
+<table><caption class="sr-only">Responding interfaces by hop</caption><thead><tr><th scope="col">Hop</th><th scope="col">Reply IP</th><th scope="col">Minimum RTT</th><th scope="col">Map location</th></tr></thead><tbody id="fiber-trace-rows"></tbody></table>
+</div>
+<div class="route-sources"><a href="https://ipmap.ripe.net/">RIPE IPmap estimates</a><a href="https://nautilus.ics.uci.edu/">Nautilus cable inference</a></div>
+</details>
 <details class="route-deep" id="fiber-more">
 <summary>Cable and measurement details</summary>
 <p id="fiber-detail"></p>
@@ -148,6 +171,18 @@
 <p id="fiber-tour-status" role="status"></p>
 <div class="table-scroll" id="fiber-tour-output" hidden><table><caption class="sr-only">Independent relay echo timings</caption><thead><tr><th scope="col">Leg</th><th scope="col">HTTPS echo RTT</th></tr></thead><tbody id="fiber-tour-rows"></tbody></table></div>
 <div class="route-sources"><a href="https://github.com/uwarring82/linkbench#relay-tour">Relay setup</a></div>
+</details>
+</div>
+<div id="route-infrastructure-content" hidden>
+<div class="route-legend infrastructure-legend"><span><i></i>Submarine systems · schematic</span><span><i></i>Public traffic sources · exchange metros</span></div>
+<p class="target-note" id="infrastructure-status" role="status"></p>
+<p class="route-waypoints" id="infrastructure-detail" aria-live="polite"></p>
+<div class="route-sources"><a href="https://github.com/stevesong/open_undersea_cable_map">TeleGeography archive via Open Undersea Cable Map</a><a href="https://creativecommons.org/licenses/by-nc-sa/3.0/">CC BY-NC-SA 3.0</a><a href="https://www.submarinecablemap.com/">Current submarine map</a><a href="https://bbmaps.itu.int/app">ITU terrestrial broadband map</a></div>
+<details class="route-deep" id="infrastructure-traffic">
+<summary>View recent traffic</summary>
+<p id="traffic-scope" class="target-note"></p>
+<div class="route-sources" id="traffic-sources"></div>
+<div id="traffic-reading"></div>
 </details>
 </div>
 </div>

@@ -117,14 +117,18 @@ export function mapPoint([lon, lat]) {
 }
 
 export function mapPath(points) {
-  const route = points.slice(1).flatMap((to, index) => arc(points[index], to).slice(index ? 1 : 0));
+  return mapPolyline(points.slice(1).flatMap((to, index) => arc(points[index], to).slice(index ? 1 : 0)));
+}
+
+export function mapPolyline(route) {
   return route.reduce((path, point, index) => {
     const [x, y] = mapPoint(point);
     const formatted = x.toFixed(2) + ' ' + y.toFixed(2);
     const previous = route[index - 1];
     if (!previous) return 'M' + formatted;
     const [oldX, oldY] = mapPoint(previous);
-    if (Math.abs(oldX - x) < 450) return path + 'L' + formatted;
+    if (Math.abs(oldX - x) <= 450) return path + 'L' + formatted;
+    if (Math.abs(oldX - x) === 900) return path + 'M' + formatted;
     const edge = oldX > x ? 900 : 0;
     const otherEdge = 900 - edge;
     const ratio = (edge - oldX) / ((x + edge - otherEdge) - oldX);

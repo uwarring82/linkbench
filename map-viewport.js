@@ -66,7 +66,7 @@ export function setupMapViewport(svg, controls) {
   }, { passive: false });
   svg.addEventListener('dblclick', (event) => transform(1.6, fraction(event.clientX, event.clientY)));
   svg.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0 || pointers.size >= 2) return;
+    if (event.button !== 0 || pointers.size >= 2 || event.target.closest('[data-map-action]')) return;
     pointers.set(event.pointerId, fraction(event.clientX, event.clientY));
     svg.setPointerCapture(event.pointerId);
     svg.classList.add('map-grabbing');

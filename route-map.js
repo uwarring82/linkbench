@@ -1,7 +1,8 @@
-import { defaultOrigin, distanceKm, estimateRoute, fiberRttMs, mapPath, mapPoint, routeModels } from './routes.js?v=1';
+import { defaultOrigin, distanceKm, estimateRoute, fiberRttMs, mapPath, mapPoint, routeModels } from './routes.js?v=2';
 
-import { setupMapViewport } from './map-viewport.js?v=2';
-import { setupFiberMap } from './fiber-map.js?v=2';
+import { setupMapViewport } from './map-viewport.js?v=3';
+import { setupFiberMap } from './fiber-map.js?v=3';
+import { setupInfrastructureMap } from './infrastructure-map.js?v=1';
 
 const svgNamespace = 'http://www.w3.org/2000/svg';
 const integer = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
@@ -38,6 +39,7 @@ function marker(parent, point, className, radius, labelSide = 'above') {
   title.textContent = point.name;
   group.append(title, display);
   parent.append(group);
+  return group;
 }
 
 export function setupRouteMap(root, getRuns) {
@@ -53,7 +55,9 @@ export function setupRouteMap(root, getRuns) {
     in: find('map-zoom-in'), out: find('map-zoom-out'),
     reset: find('map-reset'), value: find('map-zoom-value'),
   });
-  const fiberMap = setupFiberMap(find, svg, viewport, { makeSvg, marker, addText, formatKm, formatMs });
+  const viewTools = { makeSvg, marker, addText, formatKm, formatMs };
+  const fiberMap = setupFiberMap(find, svg, viewport, viewTools);
+  const infrastructureMap = setupInfrastructureMap(find, svg, viewport, viewTools);
   find('route-basemap').setAttribute('href', './route-land.svg');
 
   function draw() {
@@ -119,23 +123,26 @@ export function setupRouteMap(root, getRuns) {
   }
 
   function showMode(value) {
-    const isLocal = value === 'local';
     if (mode !== value) viewport.reset();
     mode = value;
-    find('route-local-mode').setAttribute('aria-pressed', isLocal);
-    find('route-fiber-mode').setAttribute('aria-pressed', !isLocal);
-    for (const id of ['route-local-controls', 'route-local-content', 'route-direct', 'route-model', 'route-points']) {
-      find(id).toggleAttribute('hidden', !isLocal);
+    for (const [name, ids] of Object.entries({
+      local: ['route-local-controls', 'route-local-content', 'route-direct', 'route-model', 'route-points'],
+      fiber: ['route-fiber-controls', 'route-fiber-content', 'fiber-paths', 'fiber-points',
+        'fiber-trace-lines', 'fiber-trace-points'],
+      infrastructure: ['route-infrastructure-controls', 'route-infrastructure-content',
+        'infrastructure-cables', 'infrastructure-points'],
+    })) {
+      find('route-' + name + '-mode').setAttribute('aria-pressed', mode === name);
+      for (const id of ids) find(id).toggleAttribute('hidden', mode !== name);
     }
-    for (const id of ['route-fiber-controls', 'route-fiber-content', 'fiber-paths', 'fiber-points']) {
-      find(id).toggleAttribute('hidden', isLocal);
-    }
-    if (isLocal) draw();
-    else fiberMap.draw();
+    if (mode === 'local') draw();
+    if (mode === 'fiber') fiberMap.draw();
+    if (mode === 'infrastructure') infrastructureMap.show();
   }
 
-  find('route-local-mode').addEventListener('click', () => showMode('local'));
-  find('route-fiber-mode').addEventListener('click', () => showMode('fiber'));
+  for (const name of ['local', 'fiber', 'infrastructure']) {
+    find('route-' + name + '-mode').addEventListener('click', () => showMode(name));
+  }
   select.addEventListener('change', () => {
     viewport.reset();
     draw();
@@ -153,6 +160,6 @@ export function setupRouteMap(root, getRuns) {
     draw();
   });
   const initial = new URLSearchParams(location.search).get('view');
-  showMode(initial === 'intercontinental' ? 'fiber' : 'local');
+  showMode(({ intercontinental: 'fiber', infrastructure: 'infrastructure' })[initial] ?? 'local');
   return draw;
 }

@@ -75,3 +75,11 @@ Example config for the entry relay, with placeholder domains and keys. Copy it f
 ```
 
 The entry creates a 64-byte payload with a run ID. Relays forward it in HTTPS requests to fixed next-hop origins. The entry verifies that the exact payload returns, then reports elapsed time on its monotonic clock. Each leg is also timed with a separate same-clock HTTPS echo after the payload returns. Echo timings include HTTP and server overhead, and a failed echo is independently marked unavailable. They are round trips and are not summed into the actual forward loop time. The physical paths remain subject to carrier routing.
+
+### Cable catalogue, traceroutes and current traffic
+
+Open **Routes → Infrastructure & traffic** for the 2022 TeleGeography snapshot republished by [Open Undersea Cable Map](https://github.com/stevesong/open_undersea_cable_map) under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/). The map uses a pinned version of the archive and links to the current TeleGeography map and ITU terrestrial map. The geometry is schematic and the historical inventory includes planned systems. Choose a cable or click its line to inspect its archived landing points.
+
+**View recent traffic** loads the NetSage dashboard for participating Atlantic research circuits. Select an exchange to view an operator-published traffic chart or open the operator’s own dashboard. The chart scope is the circuit or exchange indicated by the provider. The cable layer has no utilization estimates.
+
+In **Intercontinental → Inspect traceroute hops**, choose an Atlas direction and load the most recent archived ICMP trace. The table gives the minimum RTT for each responding IP at each hop with an estimated city when RIPE IPmap can supply one. Select a city to zoom to the marker. Dashed pink lines connect consecutive hops with a single mapped reply each. They describe the sequence of estimated cities. The selected candidate cable is independent of the trace.

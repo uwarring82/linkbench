@@ -121,3 +121,27 @@ footer{display:flex;justify-content:space-between;border-top:1px solid var(--lin
 @media(max-width:580px){.fiber-readings{grid-template-columns:1fr}.map-tools button{min-width:34px;min-height:34px}.map-marker text{font-size:20px}}
 
 @media(min-width:581px){#route-fiber-controls{grid-template-columns:minmax(225px,350px) 1fr}}
+
+#route-infrastructure-controls{grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))}
+.infrastructure-cable{stroke:#dfb372;stroke-width:1;opacity:.58;cursor:pointer;pointer-events:stroke}
+.infrastructure-cable:hover,.infrastructure-cable.is-selected{opacity:1;stroke-width:2.8}
+.has-selection .infrastructure-cable:not(.is-selected):not(:hover){opacity:.19}
+.infrastructure-exchange,.infrastructure-landing{stroke:#11191e;stroke-width:1.5}
+.infrastructure-exchange{fill:#77dfb2}
+.infrastructure-landing{fill:#eeb96a}
+.infrastructure-action{cursor:pointer}
+.infrastructure-legend span:first-child i{border-color:#eeb96a;border-style:solid}
+.infrastructure-legend span:last-child i{border-color:#77dfb2;border-style:solid}
+#infrastructure-status button,.route-sources button,#fiber-trace-rows button{font-size:12px;padding:5px 8px}
+#traffic-reading img{display:block;max-width:100%;height:auto;margin-top:12px}
+#traffic-reading img[hidden]{display:none}
+#traffic-reading iframe{display:block;width:100%;min-height:620px;border:1px solid var(--line);margin-top:12px}
+#fiber-trace .route-controls{margin:12px 0;align-items:end}
+#fiber-trace-load{justify-self:start}
+.trace-path{stroke:#f3a6e1;stroke-width:2;stroke-dasharray:3 4}
+.trace-marker{cursor:pointer}
+.trace-marker circle{fill:#f3a6e1;stroke:#11191e;stroke-width:1.5}
+.trace-marker.is-active circle,.trace-marker:focus circle{stroke:#fff;stroke-width:2.5}
+.trace-marker .map-marker text{fill:#17111a;stroke:none;font-size:9px;pointer-events:none}
+#fiber-trace-rows .is-active{background:#38293a}
+.fiber-legend .fiber-trace-key i{border-color:#f3a6e1;border-style:dashed}

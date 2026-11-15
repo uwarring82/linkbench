@@ -335,7 +335,7 @@ async function openRouteMap() {
   if (refreshRouteMap || routeLoading) return;
   routeLoading = true;
   try {
-    const { setupRouteMap } = await import('./route-map.js?v=fiber-3');
+    const { setupRouteMap } = await import('./route-map.js?v=network-1');
     refreshRouteMap = setupRouteMap(routeMap, () => runs);
   } catch {
     id('route-default').textContent = 'The route map could not load. Collapse it and reopen to retry.';
@@ -345,4 +345,4 @@ async function openRouteMap() {
 }
 routeMap.addEventListener('toggle', () => { if (routeMap.open) openRouteMap(); });
 document.querySelector('nav a[href="#route-map"]').addEventListener('click', openRouteMap);
-if (location.hash === '#route-map') openRouteMap();
+if (location.hash === '#route-map' || new URLSearchParams(location.search).get('view') === 'infrastructure') openRouteMap();

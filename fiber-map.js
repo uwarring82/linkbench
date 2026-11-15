@@ -1,5 +1,6 @@
 import { atlasStops, corridors, tours } from './corridors.js?v=2';
-import { distanceKm, mapPath, mapPoint } from './routes.js?v=1';
+import { distanceKm, mapPath, mapPoint } from './routes.js?v=2';
+import { setupAtlasTrace } from './atlas-trace.js?v=1';
 
 const atlas = 'https://atlas.ripe.net';
 const sampleAgeSeconds = 6 * 60 * 60;
@@ -43,6 +44,11 @@ export function setupFiberMap(find, svg, viewport, { makeSvg, marker, addText, f
   const tourForm = find('fiber-tour-form');
   const tourStatus = find('fiber-tour-status');
   const tourButton = find('fiber-tour-start');
+  const traceroute = setupAtlasTrace(find, viewport, { makeSvg, addText, formatMs });
+  function setTracePair() {
+    const { from, to } = corridors[select.value];
+    traceroute.setPair(atlasStops[from], atlasStops[to]);
+  }
   let activeQuery;
   let tourStarted = false;
 
@@ -51,6 +57,7 @@ export function setupFiberMap(find, svg, viewport, { makeSvg, marker, addText, f
     option.value = key;
   }
   select.value = 'sacs';
+  setTracePair();
 
   function path(corners, className) {
     paths.append(makeSvg('path', { class: className, d: mapPath(corners) }));
@@ -115,6 +122,7 @@ export function setupFiberMap(find, svg, viewport, { makeSvg, marker, addText, f
   }
 
   select.addEventListener('change', () => {
+    setTracePair();
     activeQuery?.abort();
     activeQuery = undefined;
     readings.replaceChildren();
