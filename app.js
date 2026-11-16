@@ -5,6 +5,7 @@ const id = (name) => document.getElementById(name);
 const form = id('settings');
 const names = { demo: 'Cloudflare demo', global: 'Worldwide · M-Lab NDT7', freiburg: 'Freiburg', control: 'Independent', lan: 'Home LAN' };
 const metricKeys = ['down', 'up', 'idle', 'downLoaded', 'upLoaded'];
+const units = { down: 'Mbit/s', up: 'Mbit/s', idle: 'ms', downLoaded: 'ms', upLoaded: 'ms' };
 const storageKey = 'linkbench.runs.v1';
 const saveKey = 'linkbench.settings.v1';
 const demoOrigin = 'https://speed.cloudflare.com';
@@ -158,7 +159,7 @@ function renderComparison(visible) {
   const decision = n === 6 && blocks.size === 6 && comparisons.size === 1
     ? cellularWins >= 5 ? 'Cellular wins' : dslWins >= 5 ? 'DSL wins' : 'Unresolved'
     : 'Unresolved';
-  addText(root, 'p', decision + ' · ' + n + ' eligible block(s) · ' + cellularWins + ' cellular wins · ' + dslWins + ' DSL wins.');
+  addText(root, 'p', decision + ' · ' + n + ' eligible block(s) · ' + cellularWins + ' cellular wins · ' + dslWins + ' DSL wins. · heuristic (PROTOCOL.md); schedule, order and access point not verified');
   if (n) addText(root, 'p', 'Median paired difference ' + formatted(median(differences)) + ' ms. Range ' +
     formatted(Math.min(...differences)) + ' to ' + formatted(Math.max(...differences)) + ' ms.');
   root.append(list);
@@ -210,7 +211,7 @@ function csvField(value) {
 const columns = ['time', 'id', 'target', 'endpoint', 'iface', 'uplink', 'vpn', 'block', 'note', 'status',
   'goodputProfile', 'loadedProfile', ...metricKeys, 'flags', 'site', 'city', 'machine', 'minTcpRttMs', 'downloadStatus', 'uploadStatus', 'uploadSource', 'uploadTermination', 'uploadCloseCode', 'uploadWasClean'];
 
-id('export-json').onclick = () => downloadFile('linkbench-history.json', JSON.stringify(runs, null, 2), 'application/json');
+id('export-json').onclick = () => downloadFile('linkbench-history.json', JSON.stringify(runs.map((run) => ({ ...run, appVersion: '0.1.0', units })), null, 2), 'application/json');
 id('export-csv').onclick = () => {
   const records = runs.flatMap((run) => run.target === 'global' ? run.regions.map((region) => {
     const rtts = [region.download?.minRttMs, region.upload?.minRttMs].filter(Number.isFinite);
@@ -218,7 +219,7 @@ id('export-csv').onclick = () => {
       minTcpRttMs: rtts.length ? Math.min(...rtts) : null, down: region.download?.mbps, up: region.upload?.mbps,
       downloadStatus: region.download?.status ?? region.error, uploadStatus: region.upload?.status ?? region.error, uploadSource: region.upload?.source, uploadTermination: region.upload?.termination, uploadCloseCode: region.upload?.closeCode, uploadWasClean: region.upload?.wasClean };
   }) : [{ ...run, ...run.metrics }]);
-  downloadFile('linkbench-history.csv', [columns.join(','), ...records.map((record) =>
+  downloadFile('linkbench-history.csv', [columns.map((key) => units[key] ? key + '_' + units[key].replace('/', '_') : key === 'minTcpRttMs' ? key + '_ms' : key).join(','), ...records.map((record) =>
     columns.map((key) => csvField(record[key])).join(','))].join('\r\n'), 'text/csv;charset=utf-8');
 };
 for (const name of ['filter-target', 'filter-uplink', 'filter-interface']) id(name).onchange = renderHistory;

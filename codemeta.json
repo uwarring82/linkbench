@@ -1,0 +1,20 @@
+{
+  "@context": "https://w3id.org/codemeta/3.0",
+  "@type": "SoftwareSourceCode",
+  "name": "Linkbench",
+  "author": [
+    {
+      "@type": "Person",
+      "familyName": "Warring",
+      "givenName": "Ulrich",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "University of Freiburg"
+      }
+    }
+  ],
+  "codeRepository": "https://github.com/uwarring82/linkbench",
+  "version": "0.1.0",
+  "datePublished": "2026-11-16",
+  "license": "https://spdx.org/licenses/MIT"
+}

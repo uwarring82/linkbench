@@ -2,6 +2,26 @@
 
 Browser speed tests with connection labels, local history, JSON and CSV export, and a Freiburg DSL-versus-cellular comparison. The app has no frontend build step.
 
+## Limits and honest claims
+
+- Latency here is the wall time of a small HTTPS fetch from the browser, including request and response overhead and JavaScript scheduling. Browsers coarsen timers.
+- A timed-out loaded probe counts as 5000 ms.
+- HTTPS goodput is application bytes over the time from request start to last byte, including the request round trip and TCP slow start, using a single stream. It therefore underestimates link capacity. Rates use decimal Mbit/s.
+- The reported median of two goodput repeats is the arithmetic mean of the two values.
+- The measured path runs from the browser through the local Wi-Fi or LAN to the responder. A DSL-versus-cellular result includes those segments.
+- Concurrent worldwide measurements compete for bandwidth.
+- An interrupted worldwide download gives no result. The ≥ 8 s rule applies to uploads only.
+- M-Lab publishes the client IP address with each result under its [privacy policy](https://www.measurementlab.net/privacy/).
+
+**Network requests this page makes**
+
+Each of these providers sees the visitor's IP address:
+
+- The selected responder, or M-Lab after its consent box is checked.
+- RIPE Atlas and RIPE IPmap for route views.
+- raw.githubusercontent.com for the cable archive.
+- NetSage and exchange charts, embedded on request.
+
 ## Try locally
 
 From the repository root run `python3 -m http.server 8000` and visit <http://localhost:8000>. Select the Cloudflare demo, label your connection, and run a test. The demo uses Cloudflare's [public speed-test endpoints](https://github.com/cloudflare/speedtest), transfers up to 10 MB of application payload, and provides idle latency and basic goodput. Its upload byte count is the submitted payload size. The public edge may vary and the demo produces no Freiburg comparison. Results stay in this browser unless exported. The chosen responder receives requests and sees the client connection.
@@ -41,7 +61,7 @@ The responder caps payload sizes and limits concurrent bulk requests. CORS check
 
 ## Pilot
 
-Use the same protocol on the Freiburg and control responders. Budget 214 MB per run plus overhead. The upload-loaded latency compares two runs to the same Freiburg responder with the same explicit block label, interface and VPN state. The comparison requires matching endpoint revisions and negotiated HTTP versions. Schedule six blocks across days and daytime/evening windows, alternate order, and use unique labels. The UI shows the paired deltas and evaluates the predeclared five-of-six rule. It cannot independently verify the VPN route, timing of your schedule, or which access point your device used.
+Use the same protocol on the Freiburg and control responders. Budget 214 MB per run plus overhead. The upload-loaded latency compares two runs to the same Freiburg responder with the same explicit block label, interface and VPN state. The comparison requires matching endpoint revisions and negotiated HTTP versions. Schedule six blocks across days and daytime/evening windows, alternate order, and use unique labels. The UI shows the paired deltas and evaluates the five-of-six rule in PROTOCOL.md. It cannot independently verify the VPN route, timing of your schedule, or which access point your device used.
 
 ## Intercontinental map
 
@@ -89,3 +109,7 @@ In **Intercontinental → Inspect traceroute hops**, choose an Atlas direction a
 Use **Atlas** in the header or **Open full-screen atlas** in Routes. The same map layers and selections work in **2D map** and **3D globe**. On narrow screens, **Layers & details** opens the controls and measurement panel. Drag or use the arrow keys to pan or rotate. Use pinch, the zoom buttons, or the plus and minus keys to zoom. **World** resets the view and Escape closes the atlas. The address bar preserves the selected view and projection for sharing.
 
 The globe uses an orthographic projection with the far hemisphere clipped. It loads its Natural Earth basemap and projection code on demand. Archive cable geometries and the existing distinctions between illustrative links, estimated hops and measurements are shared with the flat map. Globe dependencies and source notices are in `vendor/atlas-LICENSES.txt`.
+
+## Licence and citation
+
+Code is licensed under the [MIT licence](LICENSE). Prose and original figures are licensed under [CC BY 4.0](LICENSE-docs.md). Third-party material retains its own terms; see [NOTICE.md](NOTICE.md). Cite Linkbench using [CITATION.cff](CITATION.cff).

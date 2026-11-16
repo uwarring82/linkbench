@@ -1,0 +1,1 @@
+The README, PROTOCOL.md, other prose and original figures in this repository are licensed under the Creative Commons Attribution 4.0 International licence (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/. Third-party material retains its own terms, as described in NOTICE.md.
