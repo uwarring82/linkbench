@@ -159,7 +159,7 @@ function renderComparison(visible) {
   const decision = n === 6 && blocks.size === 6 && comparisons.size === 1
     ? cellularWins >= 5 ? 'Cellular wins' : dslWins >= 5 ? 'DSL wins' : 'Unresolved'
     : 'Unresolved';
-  addText(root, 'p', decision + ' · ' + n + ' eligible block(s) · ' + cellularWins + ' cellular wins · ' + dslWins + ' DSL wins. · heuristic (PROTOCOL.md); schedule, order and access point not verified');
+  addText(root, 'p', decision + ' · ' + n + ' eligible block(s) · ' + cellularWins + ' cellular wins · ' + dslWins + ' DSL wins · heuristic (PROTOCOL.md); schedule, order and access point not verified.');
   if (n) addText(root, 'p', 'Median paired difference ' + formatted(median(differences)) + ' ms. Range ' +
     formatted(Math.min(...differences)) + ' to ' + formatted(Math.max(...differences)) + ' ms.');
   root.append(list);
@@ -208,10 +208,10 @@ function csvField(value) {
   return '"' + String(cleaned ?? '').replaceAll('"', '""') + '"';
 }
 
-const columns = ['time', 'id', 'target', 'endpoint', 'iface', 'uplink', 'vpn', 'block', 'note', 'status',
+const columns = ['time', 'id', 'appVersion', 'target', 'endpoint', 'iface', 'uplink', 'vpn', 'block', 'note', 'status',
   'goodputProfile', 'loadedProfile', ...metricKeys, 'flags', 'site', 'city', 'machine', 'minTcpRttMs', 'downloadStatus', 'uploadStatus', 'uploadSource', 'uploadTermination', 'uploadCloseCode', 'uploadWasClean'];
 
-id('export-json').onclick = () => downloadFile('linkbench-history.json', JSON.stringify(runs.map((run) => ({ ...run, appVersion: '0.1.0', units })), null, 2), 'application/json');
+id('export-json').onclick = () => downloadFile('linkbench-history.json', JSON.stringify(runs.map((run) => ({ ...run, units })), null, 2), 'application/json');
 id('export-csv').onclick = () => {
   const records = runs.flatMap((run) => run.target === 'global' ? run.regions.map((region) => {
     const rtts = [region.download?.minRttMs, region.upload?.minRttMs].filter(Number.isFinite);
@@ -267,7 +267,7 @@ form.addEventListener('submit', async (event) => {
   if (global) settings.regions = regions.map((region) => region.id);
   save(saveKey, settings);
   const { target, iface, uplink, vpn, block, note } = values;
-  const run = { schema: 1, id: crypto.randomUUID(), time: new Date().toISOString(), target, endpoint, iface, uplink, vpn,
+  const run = { schema: 1, appVersion: '0.1.0', id: crypto.randomUUID(), time: new Date().toISOString(), target, endpoint, iface, uplink, vpn,
     block: block.trim(), note: note.trim(), browser: navigator.userAgent, goodputProfile: global ? 'ndt7-parallel-v2' : demo ? 'edge-demo-v1' : 'https-goodput-v1',
     loadedProfile: (demo || global) ? null : 'https-loaded-v1', status: 'Running', flags: [], metrics: {}, loaded: {}, samples: [] };
   if (global) run.regions = regions;

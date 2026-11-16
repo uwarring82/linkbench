@@ -4,9 +4,13 @@ This document describes the rule implemented by `renderComparison` in `app.js` a
 
 ## Runs and pairs
 
-The comparison uses the currently visible history. It groups Freiburg runs with a non-empty block label and an uplink of DSL or Cellular by their exact block label. A run is eligible if it is not cancelled, has a finite upload-loaded median (`metrics.upLoaded`), and has an endpoint revision. Revision and negotiated HTTP version are taken from successful upload-bulk and upload-probe samples; each must have exactly one distinct value across those samples.
+The comparison uses the currently visible history. It groups Freiburg runs with a non-empty block label and an uplink of DSL or Cellular by their exact block label.
 
-Each block must contain exactly one eligible DSL run and exactly one eligible cellular run. Ineligible attempts are ignored. The two runs must have the same VPN state, local interface, endpoint, endpoint revision and non-empty negotiated HTTP version. An address-family difference is reported but does not exclude the pair.
+A run is eligible if it is not cancelled, has a finite upload-loaded median (`metrics.upLoaded`), and has exactly one distinct, non-empty endpoint revision across its successful upload-bulk and upload-probe samples. Negotiated HTTP version is not a run eligibility condition.
+
+Each block must contain exactly one eligible DSL run and exactly one eligible cellular run. Otherwise the block is “unavailable or unmatched”: an extra eligible run of either kind makes it unmatched, while ineligible runs do not count.
+
+The pair must have the same VPN state, local interface, endpoint and endpoint revision. Each run must also have exactly one distinct, non-empty negotiated HTTP version across its successful upload-bulk and upload-probe samples, and that version must be equal across the pair. A block whose pair fails any of these conditions is also “unavailable or unmatched”. An address-family difference is reported but does not exclude the pair.
 
 ## Wins and verdict
 
