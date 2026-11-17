@@ -1,3 +1,4 @@
+import { comparePilot } from './pilot.js';
 import { measure, median, profiles } from './measure.js';
 import { globalSites, measureGlobal } from './global.js?v=4';
 
@@ -112,53 +113,22 @@ function regionTable(regions) {
   return wrap;
 }
 
-function metadataFor(run) {
-  const primary = run.samples.filter((sample) => ['up-bulk', 'up-probe'].includes(sample.phase) && sample.status === 'ok');
-  const versions = [...new Set(primary.map((sample) => sample.http))];
-  const revisions = [...new Set(primary.map((sample) => sample.revision))];
-  return { http: versions.length === 1 ? versions[0] : null, revision: revisions.length === 1 ? revisions[0] : null,
-    families: [...new Set(primary.map((sample) => sample.family))].join(',') };
-}
-
 function renderComparison(visible) {
   const root = id('comparison');
   root.replaceChildren();
-  const blocks = new Map();
-  for (const run of visible) {
-    if (run.target !== 'freiburg' || !run.block || !['DSL', 'Cellular'].includes(run.uplink)) continue;
-    if (!blocks.has(run.block)) blocks.set(run.block, []);
-    blocks.get(run.block).push(run);
-  }
-  id('pilot').hidden = blocks.size === 0;
-  if (!blocks.size) return;
-  const differences = [];
+  const { decision, blockCount, differences, cellularWins, dslWins, blocks } = comparePilot(visible);
+  id('pilot').hidden = blockCount === 0;
+  if (!blockCount) return;
   const list = document.createElement('ul');
-  const comparisons = new Set();
-  let cellularWins = 0;
-  let dslWins = 0;
-  for (const [block, attempts] of blocks) {
-    const eligible = attempts.filter((run) => !run.cancelled && Number.isFinite(run.metrics.upLoaded) && metadataFor(run).revision);
-    const dsl = eligible.filter((run) => run.uplink === 'DSL');
-    const cell = eligible.filter((run) => run.uplink === 'Cellular');
-    const left = dsl[0] && metadataFor(dsl[0]);
-    const right = cell[0] && metadataFor(cell[0]);
-    if (dsl.length !== 1 || cell.length !== 1 || dsl[0].vpn !== cell[0].vpn || dsl[0].iface !== cell[0].iface ||
-        dsl[0].endpoint !== cell[0].endpoint || left.revision !== right.revision || !left.http || left.http !== right.http) {
+  for (const { block, paired, delta, familiesDiffer } of blocks) {
+    if (!paired) {
       addText(list, 'li', block + ' · unavailable or unmatched pair');
       continue;
     }
-    comparisons.add(JSON.stringify([dsl[0].endpoint, left.revision, left.http, dsl[0].iface, dsl[0].vpn]));
-    const delta = dsl[0].metrics.upLoaded - cell[0].metrics.upLoaded;
-    differences.push(delta);
-    if (delta >= 20 && delta >= 0.25 * dsl[0].metrics.upLoaded) cellularWins++;
-    if (-delta >= 20 && -delta >= 0.25 * cell[0].metrics.upLoaded) dslWins++;
     addText(list, 'li', block + ' · DSL minus cellular ' + formatted(delta) + ' ms' +
-      (left.families !== right.families ? ' · address family differs' : ''));
+      (familiesDiffer ? ' · address family differs' : ''));
   }
   const n = differences.length;
-  const decision = n === 6 && blocks.size === 6 && comparisons.size === 1
-    ? cellularWins >= 5 ? 'Cellular wins' : dslWins >= 5 ? 'DSL wins' : 'Unresolved'
-    : 'Unresolved';
   addText(root, 'p', decision + ' · ' + n + ' eligible block(s) · ' + cellularWins + ' cellular wins · ' + dslWins + ' DSL wins · heuristic (PROTOCOL.md); schedule, order and access point not verified.');
   if (n) addText(root, 'p', 'Median paired difference ' + formatted(median(differences)) + ' ms. Range ' +
     formatted(Math.min(...differences)) + ' to ' + formatted(Math.max(...differences)) + ' ms.');

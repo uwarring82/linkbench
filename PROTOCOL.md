@@ -1,6 +1,6 @@
 # Freiburg pilot decision rule
 
-This document describes the rule implemented by `renderComparison` in `app.js` and the pilot guidance in `index.html`.
+This document describes the rule implemented by `comparePilot` in `pilot.js` and the pilot guidance in `index.html`.
 
 ## Runs and pairs
 

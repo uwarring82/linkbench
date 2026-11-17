@@ -2,6 +2,8 @@
 
 Browser speed tests with connection labels, local history, JSON and CSV export, and a Freiburg DSL-versus-cellular comparison. The app has no frontend build step.
 
+See [DATA.md](DATA.md) for the JSON and CSV export data dictionary.
+
 ## Limits and honest claims
 
 - Latency here is the wall time of a small HTTPS fetch from the browser, including request and response overhead and JavaScript scheduling. Browsers coarsen timers.
