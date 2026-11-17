@@ -17,10 +17,13 @@ Browser speed tests with connection labels, local history, JSON and CSV export, 
 
 Each of these providers sees the visitor's IP address:
 
+- GitHub Pages, which serves the page.
 - The selected responder, or M-Lab after its consent box is checked.
 - RIPE Atlas and RIPE IPmap for route views.
 - raw.githubusercontent.com for the cable archive.
 - NetSage and exchange charts, embedded on request.
+
+Only GitHub Pages is contacted when the page opens (unless the link opens the route map directly); the others only when a feature is used. Test history stays in the browser's local storage; the page sets no cookies. The page states the same under **Measurement method → What this page sends where**.
 
 ## Try locally
 
