@@ -1,3 +1,4 @@
+import { radioSnapshot, describeContext, setupLocation } from './field-context.js';
 import { comparePilot } from './pilot.js';
 import { measure, median, profiles } from './measure.js';
 import { globalSites, measureGlobal } from './global.js?v=4';
@@ -23,6 +24,17 @@ function save(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; }
 }
 
+const readLocation = setupLocation(id('use-location'), id('position-status'));
+function renderNetwork() {
+  const connection = navigator.connection;
+  const facts = describeContext({ locationStatus: 'off', browserInterface: connection?.type,
+    browserEffectiveType: connection?.effectiveType });
+  id('browser-network').textContent = facts
+    ? facts + '. Speed class describes connection performance, not the cellular radio standard.'
+    : 'This browser supplies no automatic connection details.';
+}
+renderNetwork();
+
 function updateTarget() {
   const target = id('target').value;
   const demo = target === 'demo';
@@ -39,6 +51,9 @@ function updateTarget() {
 }
 
 function showMetrics(run) {
+  const context = describeContext(run?.fieldContext);
+  id('latest-context').textContent = context;
+  id('latest-context').hidden = !context;
   const global = run?.target === 'global';
   id('single-metrics').hidden = global;
   id('global-readout').hidden = !global;
@@ -148,7 +163,9 @@ function renderHistory() {
   for (const run of visible) {
     const row = document.createElement('tr');
     addText(row, 'td', names[run.target] + ' · ' + new Date(run.time).toLocaleString());
-    addText(row, 'td', [run.iface, run.uplink, run.vpn].join(' / '));
+    const pathCell = addText(row, 'td', [run.iface, run.uplink, run.vpn].join(' / '));
+    const context = describeContext(run.fieldContext);
+    if (context) addText(pathCell, 'small', context);
     if (run.target === 'global') {
       const cell = row.insertCell();
       cell.colSpan = 4;
@@ -179,7 +196,9 @@ function csvField(value) {
 }
 
 const columns = ['time', 'id', 'appVersion', 'target', 'endpoint', 'iface', 'uplink', 'vpn', 'block', 'note', 'status',
-  'goodputProfile', 'loadedProfile', ...metricKeys, 'flags', 'site', 'city', 'machine', 'minTcpRttMs', 'downloadStatus', 'uploadStatus', 'uploadSource', 'uploadTermination', 'uploadCloseCode', 'uploadWasClean'];
+  'goodputProfile', 'loadedProfile', ...metricKeys, 'flags', 'site', 'city', 'machine', 'minTcpRttMs', 'downloadStatus', 'uploadStatus', 'uploadSource', 'uploadTermination', 'uploadCloseCode', 'uploadWasClean',
+  'locationStatus', 'latitude', 'longitude', 'accuracyM', 'fixTime', 'browserInterface', 'browserEffectiveType',
+  'reportedOperator', 'reportedRadio', 'reportedCellId', 'reportedRsrpDbm'];
 
 id('export-json').onclick = () => downloadFile('linkbench-history.json', JSON.stringify(runs.map((run) => ({ ...run, units })), null, 2), 'application/json');
 id('export-csv').onclick = () => {
@@ -190,7 +209,7 @@ id('export-csv').onclick = () => {
       downloadStatus: region.download?.status ?? region.error, uploadStatus: region.upload?.status ?? region.error, uploadSource: region.upload?.source, uploadTermination: region.upload?.termination, uploadCloseCode: region.upload?.closeCode, uploadWasClean: region.upload?.wasClean };
   }) : [{ ...run, ...run.metrics }]);
   downloadFile('linkbench-history.csv', [columns.map((key) => units[key] ? key + '_' + units[key].replace('/', '_') : key === 'minTcpRttMs' ? key + '_ms' : key).join(','), ...records.map((record) =>
-    columns.map((key) => csvField(record[key])).join(','))].join('\r\n'), 'text/csv;charset=utf-8');
+    columns.map((key) => csvField(record[key] ?? record.fieldContext?.[key])).join(','))].join('\r\n'), 'text/csv;charset=utf-8');
 };
 for (const name of ['filter-target', 'filter-uplink', 'filter-interface']) id(name).onchange = renderHistory;
 id('target').onchange = updateTarget;
@@ -200,6 +219,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) controller?.abort('Test page was hidden');
 });
 navigator.connection?.addEventListener('change', () => {
+  renderNetwork();
   const reported = navigator.connection.type;
   if (reported && controller?.interfaceType && reported !== controller.interfaceType) controller.abort('Reported interface changed');
 });
@@ -237,9 +257,11 @@ form.addEventListener('submit', async (event) => {
   if (global) settings.regions = regions.map((region) => region.id);
   save(saveKey, settings);
   const { target, iface, uplink, vpn, block, note } = values;
-  const run = { schema: 1, appVersion: '0.1.0', id: crypto.randomUUID(), time: new Date().toISOString(), target, endpoint, iface, uplink, vpn,
+  const run = { schema: 1, appVersion: '0.2.0', id: crypto.randomUUID(), time: new Date().toISOString(), target, endpoint, iface, uplink, vpn,
     block: block.trim(), note: note.trim(), browser: navigator.userAgent, goodputProfile: global ? 'ndt7-parallel-v2' : demo ? 'edge-demo-v1' : 'https-goodput-v1',
     loadedProfile: (demo || global) ? null : 'https-loaded-v1', status: 'Running', flags: [], metrics: {}, loaded: {}, samples: [] };
+  run.fieldContext = { ...readLocation(), ...radioSnapshot(navigator.connection, values) };
+  for (const name of ['cellId', 'rsrp', 'radio', 'operator']) form.elements.namedItem(name).value = '';
   if (global) run.regions = regions;
   controller = new AbortController();
   controller.interfaceType = navigator.connection?.type;

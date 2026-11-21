@@ -195,3 +195,9 @@ html:has(#atlas-dialog[open]){overflow:hidden}
   #atlas-dialog.atlas-details-open .route-sidebar{display:block}
 }
 @media(max-width:580px){.atlas-launch{margin-inline-start:0}}
+
+.field-context {border-block:1px solid var(--line);padding:.65rem 0}
+.field-context summary {cursor:pointer;font-weight:600}
+.field-context p,#latest-context {font-size:.875rem;line-height:1.5;overflow-wrap:anywhere}
+.field-context .check {margin-top:.8rem}
+.field-context a {text-decoration:underline}

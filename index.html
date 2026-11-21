@@ -6,8 +6,8 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Measure and compare network paths with an auditable test history.">
 <title>Linkbench · Network measurements</title>
-<link rel="stylesheet" href="./style.css?v=atlas-1">
-<script type="module" src="./app.js?v=atlas-1"></script>
+<link rel="stylesheet" href="./style.css?v=field-1">
+<script type="module" src="./app.js?v=field-1"></script>
 </head>
 <body>
 <header class="top"><div class="wrap masthead"><a class="brand" href="./" aria-label="Linkbench home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span> Linkbench</a><nav aria-label="Page"><a href="#test">Speed test</a><a href="#history">History</a><a href="#route-map">Routes</a><a href="?atlas=2d">Atlas</a><a href="#method">Method</a></nav></div></header>
@@ -31,6 +31,19 @@
 <label>Pilot block <span>optional</span><input name="block" maxlength="40" placeholder="e.g. Day 1 · evening"></label>
 </div>
 <label>Setup note <span>optional</span><input name="note" maxlength="120" placeholder="e.g. iPhone hotspot or same router"></label>
+<details class="field-context"><summary>Cellular information &amp; device coordinates</summary>
+<label class="check"><input type="checkbox" id="use-location" autocomplete="off"><span>Include current coordinates with each test</span></label>
+<p id="position-status" role="status">Location is off.</p>
+<p>The browser may use GNSS, Wi-Fi or cellular positioning. Each run saves the latest fix up to 30 seconds old, its accuracy and its time. Coordinates stay in browser history and appear in exports.</p>
+<p id="browser-network"></p>
+<div class="fields">
+<label>Operator or SIM label<input name="operator" maxlength="64" placeholder="e.g. Blau or Telekom"></label>
+<label>Observed radio<select name="radio"><option value="">Unknown</option><option>2G</option><option>3G</option><option>LTE</option><option>5G</option><option>5G NSA</option><option>5G SA</option></select></label>
+<label>Serving Cell ID<input name="cellId" maxlength="40" placeholder="As shown in Field Test"></label>
+<label>RSRP (dBm)<input name="rsrp" type="number" step="any" placeholder="e.g. −95"></label>
+</div>
+<p>These four fields are manual. On iPhone, dial <code>*3001#12345#*</code> in Phone to check the available Field Test readings. Use <a href="https://www.cellmapper.net/map" target="_blank" rel="noopener noreferrer">CellMapper</a> to explore mapped sites.</p>
+</details>
 <div class="actions"><button class="primary" type="submit" id="start">Run speed test <span aria-hidden="true">↗</span></button><button type="button" id="cancel" hidden>Cancel</button></div>
 <p class="budget" id="budget"></p>
 </form>
@@ -45,6 +58,7 @@
 <div><span>During upload</span><strong id="upLoaded">—</strong><small>ms</small></div>
 </div>
 <div id="global-readout" hidden><p class="target-note">Sites run together within each direction. The numbers show the share achieved by each path while competing for the same connection.</p><div id="global-results"></div></div>
+<p id="latest-context" hidden></p>
 <label class="sr-only" for="progress">Test progress</label><progress id="progress" max="15" value="0"></progress>
 <p id="message" class="message" role="status" aria-live="polite">Select your connection details and run a test.</p>
 </section>
