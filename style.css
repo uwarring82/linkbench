@@ -195,3 +195,16 @@ html:has(#atlas-dialog[open]){overflow:hidden}
   #atlas-dialog.atlas-details-open .route-sidebar{display:block}
 }
 @media(max-width:580px){.atlas-launch{margin-inline-start:0}}
+
+.field-context {border-block:1px solid var(--line);padding:.65rem 0}
+.field-context summary {cursor:pointer;font-weight:600}
+.field-context p,#latest-context {font-size:.875rem;line-height:1.5;overflow-wrap:anywhere}
+.field-context .check {margin-top:.8rem}
+.field-context a {text-decoration:underline}
+
+.measurement-overlay {margin:12px 0;padding:10px 12px;border:1px solid var(--line);border-radius:7px}
+.measurement-overlay p {font-size:.875rem;line-height:1.45;margin:.5rem 0;overflow-wrap:anywhere}
+.measurement-overlay button {margin-top:.5rem}
+.measurement-dot {fill:#e797fa;stroke:#32173b;stroke-width:1.5;pointer-events:all;cursor:pointer}
+.measurement-marker.is-active circle {stroke:white;stroke-width:2}
+.measurement-marker .map-marker text {display:none}

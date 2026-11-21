@@ -61,7 +61,7 @@ export function setupAtlas(find, svg, flat, controls) {
     status.hidden = false;
     controls.in.disabled = controls.out.disabled = controls.reset.disabled = true;
     try {
-      loading ??= import('./atlas-globe.js?v=1').then(({ setupGlobe }) => setupGlobe(canvas, svg, shapes, {
+      loading ??= import('./atlas-globe.js?v=2').then(({ setupGlobe }) => setupGlobe(canvas, svg, shapes, {
         updateZoom: showControls,
         describe(text) {
           canvas.setAttribute('aria-label', 'Interactive world globe. ' + text);

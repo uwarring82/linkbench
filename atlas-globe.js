@@ -90,7 +90,7 @@ export async function setupGlobe(canvas, svg, shapes, { updateZoom, describe, in
       context.textAlign = 'center';
       context.textBaseline = 'middle';
       context.fillText(shape.label, x, y + 0.5);
-    } else if (zoom >= 2.4 || interactive) {
+    } else if ((zoom >= 2.4 || interactive) && !element.classList.contains('measurement-marker')) {
       const left = x > w * 0.78;
       context.font = '650 11px system-ui, sans-serif';
       context.textAlign = left ? 'right' : 'left';

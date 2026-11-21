@@ -11,7 +11,7 @@ Fields below are optional when their phase was not reached or does not apply. JS
 | Name | Type | Unit | Meaning | Where it is set (file:function) |
 | --- | --- | --- | --- | --- |
 | schema | number | — | Schema value `1`. | app.js:submit handler |
-| appVersion | string | — | App version `0.1.0`. | app.js:submit handler |
+| appVersion | string | — | App version `0.2.0`. | app.js:submit handler |
 | id | string | — | Random run UUID. | app.js:submit handler |
 | time | string | UTC ISO 8601 | Run creation time. | app.js:submit handler |
 | target | string | — | Selected target (`demo`, `global`, `freiburg`, `control`, `lan`). | app.js:submit handler |
@@ -117,3 +117,15 @@ Types describe values before CSV stringification. Shared run fields retain their
 | uploadTermination | string or null | — | Upload termination. | app.js:CSV export handler |
 | uploadCloseCode | number or null | — | Upload WebSocket close code. | app.js:CSV export handler |
 | uploadWasClean | boolean or null | — | Upload WebSocket clean-close value. | app.js:CSV export handler |
+
+## Optional cellular and location context (0.2.0)
+
+JSON stores these fields under `fieldContext`. CSV appends the same field names to each row. Older runs have no context.
+
+| Fields | Source and units |
+| --- | --- |
+| locationStatus | off, waiting, permission denied, unavailable, timed out, stale or captured at run start |
+| latitude, longitude | Browser geolocation in WGS84 decimal degrees. The browser does not identify the underlying positioning technology. |
+| accuracyM, fixTime | Horizontal accuracy radius in metres and acquisition time in UTC. Only fixes up to 30 seconds old are attached. |
+| browserInterface, browserEffectiveType | Browser-reported interface and estimated performance class when available. The latter cannot identify LTE or 5G. |
+| reportedOperator, reportedRadio, reportedCellId, reportedRsrpDbm | User-entered operator, radio technology, serving-cell identifier (text) and reference signal received power in dBm. Entries apply to one run. |
