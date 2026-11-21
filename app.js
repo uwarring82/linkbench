@@ -328,7 +328,7 @@ async function openRouteMap() {
   if (refreshRouteMap || routeLoading) return;
   routeLoading = true;
   try {
-    const { setupRouteMap } = await import('./route-map.js?v=atlas-1');
+    const { setupRouteMap } = await import('./route-map.js?v=field-2');
     refreshRouteMap = setupRouteMap(routeMap, () => runs);
   } catch {
     id('route-default').textContent = 'The route map could not load. Collapse it and reopen to retry.';

@@ -6,8 +6,8 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Measure and compare network paths with an auditable test history.">
 <title>Linkbench · Network measurements</title>
-<link rel="stylesheet" href="./style.css?v=field-1">
-<script type="module" src="./app.js?v=field-1"></script>
+<link rel="stylesheet" href="./style.css?v=field-2">
+<script type="module" src="./app.js?v=field-2"></script>
 </head>
 <body>
 <header class="top"><div class="wrap masthead"><a class="brand" href="./" aria-label="Linkbench home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span> Linkbench</a><nav aria-label="Page"><a href="#test">Speed test</a><a href="#history">History</a><a href="#route-map">Routes</a><a href="?atlas=2d">Atlas</a><a href="#method">Method</a></nav></div></header>
@@ -85,6 +85,16 @@
 <button type="button" id="route-infrastructure-mode" aria-pressed="false">Infrastructure &amp; traffic</button>
 <button type="button" class="atlas-launch" id="atlas-launch" aria-haspopup="dialog">Open full-screen atlas <span aria-hidden="true">⤢</span></button>
 </div>
+<section class="measurement-overlay" aria-label="Local connectivity measurements">
+<label class="check"><input type="checkbox" id="measurement-toggle" checked><span>My connectivity measurements</span></label>
+<p id="measurement-count"></p>
+<div id="measurement-info" hidden>
+<label>Saved test<select id="measurement-select"></select></label>
+<button type="button" id="measurement-center">Center on test</button>
+<p>Dots mark device positions at test start. Each test measures the path to its selected target.</p>
+<div id="measurement-detail" aria-live="polite"></div>
+</div>
+</section>
 <div class="route-controls" id="route-local-controls">
 <label>Destination<select id="route-destination"><option value="fra04">Frankfurt</option><option value="lga05" selected>New York</option><option value="jnb01">Johannesburg</option><option value="sin01">Singapore</option><option value="syd03">Sydney</option></select></label>
 <p id="route-default"></p>
@@ -200,6 +210,7 @@
 <g id="route-points"></g>
 <g id="fiber-points" hidden></g>
 <g id="fiber-trace-points" hidden></g>
+<g id="measurement-points"></g>
 </svg>
 <canvas id="atlas-globe" role="img" tabindex="0" aria-describedby="map-help" aria-label="Interactive world globe" hidden></canvas>
 <p id="atlas-globe-status" class="target-note" role="status" hidden></p>

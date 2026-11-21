@@ -1,6 +1,7 @@
+import { setupMeasurementOverlay } from './atlas-measurements.js';
 import { defaultOrigin, distanceKm, estimateRoute, fiberRttMs, mapPath, mapPoint, mapPolyline, routeModels } from './routes.js?v=2';
 
-import { setupAtlas } from './atlas-view.js?v=1';
+import { setupAtlas } from './atlas-view.js?v=2';
 import { setupMapViewport } from './map-viewport.js?v=4';
 import { setupFiberMap } from './fiber-map.js?v=4';
 import { setupInfrastructureMap } from './infrastructure-map.js?v=2';
@@ -70,6 +71,7 @@ export function setupRouteMap(root, getRuns) {
   }
 
   const viewTools = { makeSvg, marker: plotMarker, plotLine, track: viewport.track, addText, formatKm, formatMs };
+  const refreshMeasurements = setupMeasurementOverlay(find, getRuns, viewport, viewTools);
   const fiberMap = setupFiberMap(find, svg, viewport, viewTools);
   const infrastructureMap = setupInfrastructureMap(find, svg, viewport, viewTools);
   find('route-basemap').setAttribute('href', './route-land.svg');
@@ -180,5 +182,5 @@ export function setupRouteMap(root, getRuns) {
   const views = new Map([['connection', 'local'], ['intercontinental', 'fiber'], ['infrastructure', 'infrastructure']]);
   showMode(views.get(params.get('view')) ?? (wantsAtlas ? 'infrastructure' : 'local'));
   if (wantsAtlas) viewport.open(projection);
-  return draw;
+  return () => { refreshMeasurements(); draw(); };
 }
